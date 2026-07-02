@@ -1,0 +1,533 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "  ^~^",
+   LoadingTitle = "โหลด... ",
+   LoadingSubtitle = "XD  Hub"
+})
+
+--  (Tabs)
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+local HelperTab = Window:CreateTab("ตัวช่วย", 4483362458)
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+local ShootTab = Window:CreateTab("Shoot", 4483362458)
+local TrollTab = Window:CreateTab("Trolling", 4483362458)
+local TaiTab = Window:CreateTab("ท้าย", 4483362458)
+
+-- ตัวแปรระบบเบื้องหลัง
+local TargetWalkSpeed = 16
+local TargetJumpPower = 50
+local SpeedEnabled = false  
+local JumpEnabled = false   
+local InfiniteJump = false 
+local Noclip = false
+local InstantInteract = false
+local walkflinging = false
+local ESPEnabled = false 
+local StretchScreenEnabled = false 
+local SpinEnabled = false
+local SpinSpeed = 1
+
+-- ตัวแปร Hitbox
+local HitboxSize = 10
+local HitboxEnabled = false
+local HitboxTargets = {}
+
+-- ตัวแปร Aimbot
+local AimbotEnabled = false
+local AimbotFOVSize = 100
+local AimbotColor = Color3.fromRGB(255, 255, 255)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- 
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.NumSides = 60
+FOVCircle.Radius = AimbotFOVSize
+FOVCircle.Filled = false
+FOVCircle.Visible = false
+FOVCircle.Color = AimbotColor
+
+-- ==========================================
+-- [ โค้ด ESP  ]
+-- ==========================================
+_G.FriendColor = Color3.fromRGB(0, 0, 255)
+_G.EnemyColor = Color3.fromRGB(255, 0, 0)
+_G.UseTeamColor = true
+
+local Holder = Instance.new("Folder", game.CoreGui)
+Holder.Name = "ESP"
+
+local Box = Instance.new("BoxHandleAdornment")
+Box.Name = "nilBox"
+Box.Size = Vector3.new(1, 2, 1)
+Box.Color3 = Color3.new(100 / 255, 100 / 255, 100 / 255)
+Box.Transparency = 0.7
+Box.ZIndex = 0
+Box.AlwaysOnTop = false
+Box.Visible = false
+
+local NameTag = Instance.new("BillboardGui")
+NameTag.Name = "nilNameTag"
+NameTag.Enabled = false
+NameTag.Size = UDim2.new(0, 200, 0, 50)
+NameTag.AlwaysOnTop = true
+NameTag.StudsOffset = Vector3.new(0, 1.8, 0)
+local Tag = Instance.new("TextLabel", NameTag)
+Tag.Name = "Tag"
+Tag.BackgroundTransparency = 1
+Tag.Position = UDim2.new(0, -50, 0, 0)
+Tag.Size = UDim2.new(0, 300, 0, 20)
+Tag.TextSize = 15
+Tag.TextColor3 = Color3.new(100 / 255, 100 / 255, 100 / 255)
+Tag.TextStrokeColor3 = Color3.new(0 / 255, 0 / 255, 0 / 255)
+Tag.TextStrokeTransparency = 0.4
+Tag.Text = "nil"
+Tag.Font = Enum.Font.SourceSansBold
+Tag.TextScaled = false
+
+local UnloadCharacter = function(v)
+	local vHolder = Holder:FindFirstChild(v.Name)
+	if vHolder and (vHolder:FindFirstChild(v.Name .. "Box") ~= nil or vHolder:FindFirstChild(v.Name .. "NameTag") ~= nil) then
+		vHolder:ClearAllChildren()
+	end
+	if v.Character and v.Character:FindFirstChild("GetReal") then
+		v.Character.GetReal:Destroy()
+	end
+end
+
+local LoadCharacter = function(v)
+	if not ESPEnabled then return end
+	if v == LocalPlayer then return end
+	repeat wait() until v.Character ~= nil
+	v.Character:WaitForChild("Humanoid")
+	local vHolder = Holder:FindFirstChild(v.Name) or Instance.new("Folder", Holder)
+	vHolder.Name = v.Name
+	vHolder:ClearAllChildren()
+	
+	local b = Box:Clone()
+	b.Name = v.Name .. "Box"
+	b.Adornee = v.Character
+	b.Visible = ESPEnabled
+	b.Parent = vHolder
+	
+	local t = NameTag:Clone()
+	t.Name = v.Name .. "NameTag"
+	t.Enabled = ESPEnabled
+	t.Parent = vHolder
+	t.Adornee = v.Character:WaitForChild("Head", 5)
+	if not t.Adornee then
+		return UnloadCharacter(v)
+	end
+	t.Tag.Text = v.Name
+	b.Color3 = Color3.new(v.TeamColor.r, v.TeamColor.g, v.TeamColor.b)
+	t.Tag.TextColor3 = Color3.new(v.TeamColor.r, v.TeamColor.g, v.TeamColor.b)
+	local Update
+	local UpdateNameTag = function()
+		if not pcall(function()
+			v.Character.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			local maxh = math.floor(v.Character.Humanoid.MaxHealth)
+			local h = math.floor(v.Character.Humanoid.Health)
+		end) then
+			if Update then Update:Disconnect() end
+		end
+	end
+	UpdateNameTag()
+	Update = v.Character.Humanoid.Changed:Connect(UpdateNameTag)
+end
+
+local LoadPlayer = function(v)
+	v.CharacterAdded:Connect(function()
+		pcall(LoadCharacter, v)
+	end)
+	v.CharacterRemoving:Connect(function()
+		pcall(UnloadCharacter, v)
+	end)
+	v.Changed:Connect(function(prop)
+		if prop == "TeamColor" and ESPEnabled then
+			UnloadCharacter(v)
+			wait()
+			LoadCharacter(v)
+		end
+	end)
+	if ESPEnabled then LoadCharacter(v) end
+end
+
+local UnloadPlayer = function(v)
+	UnloadCharacter(v)
+	local vHolder = Holder:FindFirstChild(v.Name)
+	if vHolder then
+		vHolder:Destroy()
+	end
+end
+
+for i,v in pairs(game:GetService("Players"):GetPlayers()) do
+	spawn(function() pcall(LoadPlayer, v) end)
+end
+
+game:GetService("Players").PlayerAdded:Connect(function(v)
+	pcall(LoadPlayer, v)
+end)
+
+game:GetService("Players").PlayerRemoving:Connect(function(v)
+	pcall(UnloadPlayer, v)
+end)
+
+game:GetService("Players").LocalPlayer.NameDisplayDistance = 0
+
+_G.Reantheajfdfjdgs = ":suifayhgvsdghfsfkajewfrhk321rk213kjrgkhj432rj34f67df"
+
+function esp(target, color)
+    if target.Character and ESPEnabled then
+        if not target.Character:FindFirstChild("GetReal") then
+            local highlight = Instance.new("Highlight")
+            highlight.RobloxLocked = true
+            highlight.Name = "GetReal"
+            highlight.Adornee = target.Character
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            highlight.FillColor = color
+            highlight.Parent = target.Character
+        else
+            target.Character.GetReal.FillColor = color
+        end
+    elseif target.Character and not ESPEnabled then
+        if target.Character:FindFirstChild("GetReal") then
+            target.Character.GetReal:Destroy()
+        end
+    end
+end
+
+task.spawn(function()
+	while task.wait() do
+		if ESPEnabled then
+			for i, v in pairs(Players:GetPlayers()) do
+				if v ~= LocalPlayer then
+					esp(v, _G.UseTeamColor and v.TeamColor.Color or ((LocalPlayer.TeamColor == v.TeamColor) and _G.FriendColor or _G.EnemyColor))
+				end
+			end
+		end
+	end
+end)
+
+-- ==========================================
+-- [[ ช่องที่ 1: Player ]]
+-- ==========================================
+PlayerTab:CreateButton({ Name = "Fly v3", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Universal-Fly-V3-16477"))() end })
+
+PlayerTab:CreateInput({
+   Name = "WalkSpeed (ปรับ)",
+   PlaceholderText = " 16",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local Number = tonumber(Text)
+      if Number then TargetWalkSpeed = Number end
+   end,
+})
+
+PlayerTab:CreateToggle({ Name = "(เปิด)​Speed", CurrentValue = false, Callback = function(Value) SpeedEnabled = Value end })
+
+PlayerTab:CreateInput({
+   Name = "JumpPower (ปรับ)",
+   PlaceholderText = " 50 ",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local Number = tonumber(Text)
+      if Number then TargetJumpPower = Number end
+   end,
+})
+
+PlayerTab:CreateToggle({ Name = "(เปิด)​Jump", CurrentValue = false, Callback = function(Value) JumpEnabled = Value end })
+
+local InfJumpToggle = PlayerTab:CreateToggle({ 
+    Name = "Infinite Jump ", 
+    CurrentValue = false, 
+    Callback = function(Value) InfiniteJump = Value end 
+})
+
+PlayerTab:CreateToggle({ Name = "Noclip", CurrentValue = false, Callback = function(Value) Noclip = Value end })
+PlayerTab:CreateButton({ Name = "Get Click TP Tool", Callback = function()
+      local mouse = LocalPlayer:GetMouse()
+      local tool = Instance.new("Tool") tool.Name = "วาป" tool.RequiresHandle = true
+      local handle = Instance.new("Part", tool) handle.Name = "Handle" handle.Transparency = 1
+      tool.Activated:Connect(function() LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 2.5, 0)) end)
+      tool.Parent = LocalPlayer.Backpack
+end })
+PlayerTab:CreateButton({ Name = "Invisible", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Invisible-script-20557"))() end })
+
+-- ==========================================
+-- [[ ช่องที่ 2: ตัวช่วย ]]
+-- ==========================================
+local Lighting = game:GetService("Lighting")
+HelperTab:CreateToggle({ Name = "FullBright", CurrentValue = false, Callback = function(Value) Lighting.Brightness = Value and 5 or 2; Lighting.GlobalShadows = not Value end })
+HelperTab:CreateToggle({ Name = "Instant Interaction", CurrentValue = false, Callback = function(Value) InstantInteract = Value end })
+HelperTab:CreateToggle({ Name = "(หน้าจออ้วน)", CurrentValue = false, Callback = function(Value) StretchScreenEnabled = Value end })
+HelperTab:CreateButton({ Name = "(กันโดนตบ)", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/amdzy088/Immune-slap-tower-/main/Immune%20slap%20tower%20work"))() end })
+HelperTab:CreateButton({ Name = "(Flying Cars)", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Vfly-Gui-239672"))() end })
+
+-- ==========================================
+-- [[ ช่องที่ 3: ESP ]]
+-- ==========================================
+ESPTab:CreateToggle({ 
+    Name = " ESP ", 
+    CurrentValue = false, 
+    Callback = function(Value) 
+        ESPEnabled = Value 
+        if ESPEnabled then
+            for _, v in pairs(Players:GetPlayers()) do
+                if v ~= LocalPlayer then pcall(LoadCharacter, v) end
+            end
+        else
+            for _, v in pairs(Players:GetPlayers()) do
+                pcall(UnloadCharacter, v)
+            end
+        end
+    end 
+})
+
+-- ==========================================
+-- [[ ช่องที่ 4: Shoot ]]
+-- ==========================================
+
+ShootTab:CreateToggle({
+   Name = "Aimbot Player (เปิดใช้งานล็อกหัว)",
+   CurrentValue = false,
+   Callback = function(Value)
+      AimbotEnabled = Value
+      FOVCircle.Visible = Value  
+   end,
+})
+
+ShootTab:CreateSlider({
+   Name = "Fov (ระยะวงกลมล็อกเป้า)",
+   Range = {0, 150},
+   Increment = 5,
+   CurrentValue = 100,
+   Callback = function(Value)
+      AimbotFOVSize = Value
+      FOVCircle.Radius = Value  
+   end,
+})
+
+ShootTab:CreateColorPicker({
+    Name = "Aimbot Circle Color (สีวงกลม)",
+    Color = Color3.fromRGB(255, 255, 255),
+    Callback = function(Value)
+        AimbotColor = Value
+        FOVCircle.Color = Value  
+    end
+})
+
+ShootTab:CreateInput({
+   Name = "Hitbox Size (ขนาด)",
+   PlaceholderText = "10",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local Number = tonumber(Text)
+      if Number then HitboxSize = Number end
+   end,
+})
+
+ShootTab:CreateToggle({
+   Name = "Enable Hitbox (เปิดใช้งาน)",
+   CurrentValue = false,
+   Callback = function(Value)
+      HitboxEnabled = Value
+      if not HitboxEnabled then
+         for _, player in ipairs(HitboxTargets) do
+            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+               local hrp = player.Character.HumanoidRootPart
+               hrp.Size = Vector3.new(2, 2, 1)
+               hrp.Transparency = 0
+               hrp.BrickColor = BrickColor.new("Medium stone grey")
+               hrp.Material = Enum.Material.Plastic
+               hrp.CanCollide = true
+            end
+         end
+      end
+   end
+})
+
+-- ==========================================
+-- [[ ช่องที่ 5: Trolling ]]
+-- ==========================================
+TrollTab:CreateToggle({ Name = "Walk Fling", CurrentValue = false, Callback = function(Value) walkflinging = Value end })
+TrollTab:CreateToggle({ Name = "Spin (หมุนตัว)", CurrentValue = false, Callback = function(Value) SpinEnabled = Value end })
+TrollTab:CreateSlider({ Name = "ความเร็ว Spin (1-60)", Range = {1, 60}, Increment = 1, CurrentValue = 1, Callback = function(Value) SpinSpeed = Value end })
+
+-- ==========================================
+-- [[ ช่องที่ 6: ท้าย ]]
+-- ==========================================
+TaiTab:CreateButton({
+   Name = "รีเกม",
+   Callback = function()
+      local TeleportService = game:GetService("TeleportService")
+      local player = game.Players.LocalPlayer
+      TeleportService:Teleport(game.PlaceId, player)
+   end
+})
+
+TaiTab:CreateButton({
+   Name = "Resetตัว",
+   Callback = function()
+      if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+         LocalPlayer.Character.Humanoid.Health = 0
+      end
+   end
+})
+
+-- ==========================================
+-- [ ระบบฟังก์ชันประมวลผล Aimbot ที่คุณเขียนเพิ่มเติม ]
+-- ==========================================
+
+-- ฟังก์ชันเช็กว่าเป้าหมายอยู่บนจอภาพไหม (ตามโค้ดของคุณ)
+local function isOnScreen(pos)
+    local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+    return onScreen, screenPos
+end
+
+-- ฟังก์ชัน Wall Check เช็กสิ่งกีดขวาง (ตามโค้ดของคุณ ปรับเพิ่ม ignore ละเว้นตัวละครของเรา)
+local function isVisible(targetPart)
+    if not LocalPlayer.Character then return false end
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin)
+
+    -- เพิ่มพารามิเตอร์ละเว้นตัวเราเอง ไม่ให้กระสุนสแกนติดตัวเราเอง
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+
+    local ray = workspace:Raycast(origin, direction, raycastParams)
+
+    if ray and ray.Instance then
+        return ray.Instance:IsDescendantOf(targetPart.Parent)
+    end
+    return false
+end
+
+-- ฟังก์ชันเลือกเป้าหมายที่ใกล้จุดศูนย์กลางจอภาพมากที่สุด + ติดเงื่อนไข FOV และ Wall Check ของคุณ
+local function getClosestPlayer()
+    local closest = nil
+    local shortestDistance = math.huge
+    local center = Camera.ViewportSize / 2
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            local head = player.Character:FindFirstChild("Head") -- แนะนำล็อกหัว
+            local targetPart = head or hrp
+
+            if targetPart then
+                local onScreen, screenPos = isOnScreen(targetPart.Position)
+
+                -- ทำงานเมื่ออยู่บนจอ และผ่าน Wall Check ที่คุณสร้าง
+                if onScreen and isVisible(targetPart) then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+
+                    -- ตรวจสอบว่าระยะห่างอยู่ในขอบเขต FOV ของวงกลมไหม
+                    if dist < shortestDistance and dist <= AimbotFOVSize then
+                        shortestDistance = dist
+                        closest = player
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- ฟังก์ชันดึงรายชื่อผู้เล่นคนอื่น
+local function UpdateHitboxTargets()
+   HitboxTargets = {}
+   for _, player in ipairs(Players:GetPlayers()) do
+      if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+         table.insert(HitboxTargets, player)
+      end
+   end
+end
+
+task.spawn(function()
+   while true do
+      UpdateHitboxTargets()
+      task.wait(1)
+   end
+end)
+
+-- Infinite Jump
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        InfiniteJump = not InfiniteJump
+        InfJumpToggle:Set(InfiniteJump) 
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if InfiniteJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- ระบบ Instant Interaction
+task.spawn(function()
+    game:GetService("ProximityPromptService").PromptButtonHoldBegan:Connect(function(prompt)
+        if InstantInteract then
+            fireproximityprompt(prompt)
+        end
+    end)
+end)
+
+-- รวมการทำงานลูปใน RenderStepped
+RunService.RenderStepped:Connect(function()
+   if SpeedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = TargetWalkSpeed end
+   if JumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.JumpPower = TargetJumpPower end
+   if StretchScreenEnabled and workspace.CurrentCamera then workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame * CFrame.new(0,0,0,1,0,0,0,0.65,0,0,0,1) end
+   if SpinEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(SpinSpeed), 0) end
+   
+   -- จัดตำแหน่งวงกลมให้อยู่กลางจอ
+   if FOVCircle.Visible then
+       local Viewport = Camera.ViewportSize
+       FOVCircle.Position = Vector2.new(Viewport.X / 2, Viewport.Y / 2)
+   end
+
+   -- การทำงานล็อกหัวออโต้เมื่อเปิดสวิตช์
+   if AimbotEnabled then
+       local Target = getClosestPlayer()
+       if Target and Target.Character and Target.Character:FindFirstChild("Head") then
+           Camera.CFrame = CFrame.new(Camera.CFrame.Position, Target.Character.Head.Position)
+       end
+   end
+
+   -- ส่วนขยาย Hitbox
+   if HitboxEnabled then
+      for _, player in ipairs(HitboxTargets) do
+         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = player.Character.HumanoidRootPart
+            hrp.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+            hrp.Transparency = 0.7
+            hrp.BrickColor = BrickColor.new("Really blue")
+            hrp.Material = Enum.Material.Neon
+            hrp.CanCollide = false
+         end
+      end
+   end
+end)
+
+RunService.Stepped:Connect(function()
+   if Noclip and LocalPlayer.Character then for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+end)
+
+RunService.PostSimulation:Connect(function()
+    if walkflinging and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local Root = LocalPlayer.Character.HumanoidRootPart
+        local oldV = Root.Velocity
+        Root.Velocity = Vector3.new(100000, 100000, 100000)
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+        RunService.RenderStepped:Wait()
+        Root.Velocity = oldV
+    end
+end)
