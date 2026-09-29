@@ -1,0 +1,1215 @@
+-- =========================================================
+-- XD HUB
+-- WindUI + Player / Aimbot / ESP / Warp / Tools
+-- FIXED VERSION (CORRECTED BUTTON POSITIONS)
+-- =========================================================
+
+-- =========================
+-- LOAD WINDUI
+-- =========================
+local WindUI = loadstring(game:HttpGet(
+    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+))()
+
+-- =========================
+-- SERVICES
+-- =========================
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local Player = Players.LocalPlayer
+
+-- =========================
+-- CAMERA
+-- =========================
+local Camera = workspace.CurrentCamera
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Camera = workspace.CurrentCamera
+end)
+
+-- =========================================================
+-- SETTINGS
+-- =========================================================
+
+local SpeedEnabled = false
+local SpeedValue = 16
+local OriginalWalkSpeed = nil
+
+local JumpEnabled = false
+local JumpValue = 50
+local OriginalJumpPower = nil
+local OriginalJumpHeight = nil
+
+local InfiniteJumpEnabled = false
+local OriginalBreakJointsOnDeath = nil
+
+local TargetLockEnabled = false
+local FovRadius = 100
+
+local ESPEnabled = false
+
+local NoclipEnabled = false
+local NoclipParts = {}
+
+local FullbrightEnabled = false
+
+local InstantInteractionEnabled = false
+local PromptOriginalValues = {}
+
+local HitboxEnabled = false
+local HitboxSize = 10
+local HitboxOriginalValues = {}
+
+local UnlockCamEnabled = false
+local OriginalCameraMode = nil
+local OriginalDevCamOcclusion = nil
+local OriginalCameraType = nil
+local OriginalCameraSubject = nil
+
+-- =========================================================
+-- FOV CIRCLE
+-- =========================================================
+
+local FovCircle = nil
+
+if Drawing and Drawing.new then
+    local Success, Result = pcall(function()
+        return Drawing.new("Circle")
+    end)
+
+    if Success and Result then
+        FovCircle = Result
+
+        FovCircle.Position = Vector2.new(
+            Camera and Camera.ViewportSize.X / 2 or 0,
+            Camera and Camera.ViewportSize.Y / 2 or 0
+        )
+
+        FovCircle.Radius = FovRadius
+        FovCircle.Color = Color3.fromRGB(255, 255, 255)
+        FovCircle.Thickness = 1
+        FovCircle.Transparency = 0.8
+        FovCircle.Visible = false
+        FovCircle.Filled = false
+    end
+end
+
+-- =========================================================
+-- CHARACTER HELPERS
+-- =========================================================
+
+local function GetCharacter()
+    return Player.Character
+end
+
+local function GetHumanoid(Character)
+    if not Character then
+        return nil
+    end
+
+    return Character:FindFirstChildOfClass("Humanoid")
+end
+
+local function GetRoot(Character)
+    if not Character then
+        return nil
+    end
+
+    return Character:FindFirstChild("HumanoidRootPart")
+end
+
+-- =========================================================
+-- SPEED
+-- =========================================================
+
+local function SaveSpeed(Humanoid)
+    if OriginalWalkSpeed == nil then
+        OriginalWalkSpeed = Humanoid.WalkSpeed
+    end
+end
+
+local function ApplySpeed()
+    local Character = GetCharacter()
+    local Humanoid = GetHumanoid(Character)
+
+    if not Humanoid then
+        return
+    end
+
+    if SpeedEnabled then
+        SaveSpeed(Humanoid)
+        Humanoid.WalkSpeed = SpeedValue
+    else
+        if OriginalWalkSpeed ~= nil then
+            Humanoid.WalkSpeed = OriginalWalkSpeed
+        else
+            Humanoid.WalkSpeed = 16
+        end
+
+        OriginalWalkSpeed = nil
+    end
+end
+
+-- =========================================================
+-- JUMP
+-- =========================================================
+
+local function SaveJump(Humanoid)
+    if OriginalJumpPower == nil then
+        OriginalJumpPower = Humanoid.JumpPower
+    end
+
+    if OriginalJumpHeight == nil then
+        OriginalJumpHeight = Humanoid.JumpHeight
+    end
+end
+
+local function ApplyJump()
+    local Character = GetCharacter()
+    local Humanoid = GetHumanoid(Character)
+
+    if not Humanoid then
+        return
+    end
+
+    if JumpEnabled then
+        SaveJump(Humanoid)
+
+        if Humanoid.UseJumpPower then
+            Humanoid.JumpPower = JumpValue
+        else
+            Humanoid.JumpHeight = JumpValue / 3
+        end
+    else
+        if Humanoid.UseJumpPower then
+            if OriginalJumpPower ~= nil then
+                Humanoid.JumpPower = OriginalJumpPower
+            else
+                Humanoid.JumpPower = 50
+            end
+        else
+            if OriginalJumpHeight ~= nil then
+                Humanoid.JumpHeight = OriginalJumpHeight
+            else
+                Humanoid.JumpHeight = 7.2
+            end
+        end
+
+        OriginalJumpPower = nil
+        OriginalJumpHeight = nil
+    end
+end
+
+-- =========================================================
+-- INFINITE JUMP
+-- =========================================================
+
+UserInputService.JumpRequest:Connect(function()
+    if not InfiniteJumpEnabled then
+        return
+    end
+
+    local Character = GetCharacter()
+    local Humanoid = GetHumanoid(Character)
+
+    if Humanoid then
+        Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+local function ApplyInfiniteJump(Character)
+    local Humanoid = GetHumanoid(Character)
+
+    if not Humanoid then
+        return
+    end
+
+    if InfiniteJumpEnabled then
+        if OriginalBreakJointsOnDeath == nil then
+            OriginalBreakJointsOnDeath = Humanoid.BreakJointsOnDeath
+        end
+
+        Humanoid.BreakJointsOnDeath = false
+    else
+        if OriginalBreakJointsOnDeath ~= nil then
+            Humanoid.BreakJointsOnDeath = OriginalBreakJointsOnDeath
+        end
+
+        OriginalBreakJointsOnDeath = nil
+    end
+end
+
+-- =========================================================
+-- TARGET VISIBILITY
+-- =========================================================
+
+local function IsVisible(TargetPart)
+    if not Camera then
+        return false
+    end
+
+    local Character = GetCharacter()
+
+    if not Character then
+        return false
+    end
+
+    local Head = Character:FindFirstChild("Head")
+
+    if not Head then
+        return false
+    end
+
+    local Params = RaycastParams.new()
+
+    Params.FilterType = Enum.RaycastFilterType.Exclude
+
+    Params.FilterDescendantsInstances = {
+        Character,
+        Camera
+    }
+
+    Params.IgnoreWater = true
+
+    local Direction = TargetPart.Position - Head.Position
+
+    local Result = workspace:Raycast(
+        Head.Position,
+        Direction,
+        Params
+    )
+
+    if not Result then
+        return true
+    end
+
+    return Result.Instance:IsDescendantOf(TargetPart.Parent)
+end
+
+-- =========================================================
+-- CLOSEST TARGET
+-- =========================================================
+
+local function GetClosestHeadInFOV()
+    if not Camera then
+        return nil
+    end
+
+    local Closest = nil
+    local Shortest = math.huge
+
+    local ScreenCenter = Vector2.new(
+        Camera.ViewportSize.X / 2,
+        Camera.ViewportSize.Y / 2
+    )
+
+    for _, TargetPlayer in ipairs(Players:GetPlayers()) do
+        if TargetPlayer ~= Player and TargetPlayer.Character then
+            local Character = TargetPlayer.Character
+            local Humanoid = GetHumanoid(Character)
+            local Head = Character:FindFirstChild("Head")
+
+            if Humanoid and Head and Humanoid.Health > 0 then
+                local ScreenPos, OnScreen = Camera:WorldToViewportPoint(Head.Position)
+
+                if OnScreen and ScreenPos.Z > 0 then
+                    local Center = Vector2.new(ScreenPos.X, ScreenPos.Y)
+                    local Distance = (Center - ScreenCenter).Magnitude
+
+                    if Distance <= FovRadius and Distance < Shortest and IsVisible(Head) then
+                        Shortest = Distance
+                        Closest = Head
+                    end
+                end
+            end
+        end
+    end
+
+    return Closest
+end
+
+-- =========================================================
+-- ESP
+-- =========================================================
+
+local ESPName = "XDHub_WhiteESP"
+
+local function RemoveESP(Character)
+    if not Character then
+        return
+    end
+
+    local Old = Character:FindFirstChild(ESPName)
+
+    if Old then
+        Old:Destroy()
+    end
+end
+
+local function ApplyESP(Character)
+    if not ESPEnabled then
+        return
+    end
+
+    if not Character or not Character.Parent then
+        return
+    end
+
+    RemoveESP(Character)
+
+    local Highlight = Instance.new("Highlight")
+
+    Highlight.Name = ESPName
+    Highlight.Adornee = Character
+
+    Highlight.FillColor = Color3.fromRGB(255, 255, 255)
+    Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+
+    Highlight.FillTransparency = 0.5
+    Highlight.OutlineTransparency = 0
+
+    Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+
+    Highlight.Parent = Character
+end
+
+local function ToggleAllESP(State)
+    ESPEnabled = State
+
+    for _, TargetPlayer in ipairs(Players:GetPlayers()) do
+        if TargetPlayer ~= Player and TargetPlayer.Character then
+            if State then
+                ApplyESP(TargetPlayer.Character)
+            else
+                RemoveESP(TargetPlayer.Character)
+            end
+        end
+    end
+end
+
+local function SetupESPPlayer(TargetPlayer)
+    if TargetPlayer == Player then
+        return
+    end
+
+    TargetPlayer.CharacterAdded:Connect(function(Character)
+        task.wait(0.5)
+
+        if ESPEnabled then
+            ApplyESP(Character)
+        end
+    end)
+
+    if TargetPlayer.Character and ESPEnabled then
+        ApplyESP(TargetPlayer.Character)
+    end
+end
+
+for _, TargetPlayer in ipairs(Players:GetPlayers()) do
+    SetupESPPlayer(TargetPlayer)
+end
+
+Players.PlayerAdded:Connect(SetupESPPlayer)
+
+-- =========================================================
+-- NOCLIP
+-- =========================================================
+
+local function SaveNoclipParts()
+    NoclipParts = {}
+
+    local Character = GetCharacter()
+
+    if not Character then
+        return
+    end
+
+    for _, Object in ipairs(Character:GetDescendants()) do
+        if Object:IsA("BasePart") then
+            NoclipParts[Object] = Object.CanCollide
+        end
+    end
+end
+
+local function RestoreNoclip()
+    for Part, OriginalValue in pairs(NoclipParts) do
+        if Part and Part.Parent then
+            Part.CanCollide = OriginalValue
+        end
+    end
+
+    NoclipParts = {}
+end
+
+local function SetNoclip(State)
+    NoclipEnabled = State
+
+    if State then
+        SaveNoclipParts()
+    else
+        RestoreNoclip()
+    end
+end
+
+-- =========================================================
+-- HITBOX
+-- =========================================================
+
+local function SaveHitbox(HRP)
+    if HitboxOriginalValues[HRP] then
+        return
+    end
+
+    HitboxOriginalValues[HRP] = {
+        Size = HRP.Size,
+        Transparency = HRP.Transparency,
+        Material = HRP.Material,
+        Color = HRP.Color,
+        CanCollide = HRP.CanCollide
+    }
+end
+
+local function RestoreHitbox(HRP)
+    local Data = HitboxOriginalValues[HRP]
+
+    if not Data then
+        return
+    end
+
+    if HRP and HRP.Parent then
+        HRP.Size = Data.Size
+        HRP.Transparency = Data.Transparency
+        HRP.Material = Data.Material
+        HRP.Color = Data.Color
+        HRP.CanCollide = Data.CanCollide
+    end
+
+    HitboxOriginalValues[HRP] = nil
+end
+
+local function RestoreAllHitboxes()
+    for HRP in pairs(HitboxOriginalValues) do
+        RestoreHitbox(HRP)
+    end
+
+    HitboxOriginalValues = {}
+end
+
+local function UpdateHitboxes()
+    if not HitboxEnabled then
+        return
+    end
+
+    for _, TargetPlayer in ipairs(Players:GetPlayers()) do
+        if TargetPlayer ~= Player and TargetPlayer.Character then
+            local Character = TargetPlayer.Character
+            local HRP = Character:FindFirstChild("HumanoidRootPart")
+            local Humanoid = GetHumanoid(Character)
+
+            if HRP and Humanoid and Humanoid.Health > 0 then
+                SaveHitbox(HRP)
+
+                HRP.Size = Vector3.new(HitboxSize, HitboxSize, HitboxSize)
+                HRP.Transparency = 0.7
+                HRP.Color = Color3.fromRGB(255, 0, 0)
+                HRP.Material = Enum.Material.Neon
+                HRP.CanCollide = false
+            end
+        end
+    end
+end
+
+-- =========================================================
+-- FULLBRIGHT
+-- =========================================================
+
+local BrightVision = nil
+
+local function Bright()
+    if not FullbrightEnabled then
+        return
+    end
+
+    Lighting.Brightness = 3
+    Lighting.ClockTime = 14
+    Lighting.FogEnd = 100000
+    Lighting.GlobalShadows = false
+
+    if not BrightVision or not BrightVision.Parent then
+        BrightVision = Instance.new("ColorCorrectionEffect")
+        BrightVision.Name = "XDHub_BrightVision"
+        BrightVision.Parent = Lighting
+    end
+
+    BrightVision.Brightness = 0.25
+    BrightVision.Contrast = 0
+    BrightVision.Saturation = 0
+end
+
+local function RemoveBright()
+    if BrightVision then
+        if BrightVision.Parent then
+            BrightVision:Destroy()
+        end
+
+        BrightVision = nil
+    end
+end
+
+-- =========================================================
+-- INSTANT INTERACTION
+-- =========================================================
+
+local PromptConnection = nil
+
+local function SavePrompt(Prompt)
+    if PromptOriginalValues[Prompt] then
+        return
+    end
+
+    PromptOriginalValues[Prompt] = Prompt.HoldDuration
+end
+
+local function RestorePrompts()
+    for Prompt, Value in pairs(PromptOriginalValues) do
+        if Prompt and Prompt.Parent then
+            Prompt.HoldDuration = Value
+        end
+    end
+
+    PromptOriginalValues = {}
+end
+
+local function ToggleInstantInteraction(State)
+    InstantInteractionEnabled = State
+
+    if PromptConnection then
+        PromptConnection:Disconnect()
+        PromptConnection = nil
+    end
+
+    if not State then
+        RestorePrompts()
+        return
+    end
+
+    for _, Prompt in ipairs(workspace:GetDescendants()) do
+        if Prompt:IsA("ProximityPrompt") then
+            SavePrompt(Prompt)
+            Prompt.HoldDuration = 0
+        end
+    end
+
+    PromptConnection = workspace.DescendantAdded:Connect(function(Object)
+        if not InstantInteractionEnabled then
+            return
+        end
+
+        if Object:IsA("ProximityPrompt") then
+            SavePrompt(Object)
+            Object.HoldDuration = 0
+        end
+    end)
+end
+
+-- =========================================================
+-- UNLOCK CAM
+-- =========================================================
+
+local function ToggleUnlockCam(State)
+    UnlockCamEnabled = State
+
+    if State then
+        OriginalCameraMode = Player.CameraMode
+        OriginalDevCamOcclusion = Player.DevCameraOcclusionMode
+        if Camera then
+            OriginalCameraType = Camera.CameraType
+            OriginalCameraSubject = Camera.CameraSubject
+        end
+
+        Player.CameraMode = Enum.CameraMode.Classic
+        Player.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Zoom
+        if Camera then
+            Camera.CameraType = Enum.CameraType.Custom
+            if Player.Character and Player.Character:FindFirstChild("Head") then
+                Camera.CameraSubject = Player.Character.Head
+            end
+        end
+    else
+        if OriginalCameraMode ~= nil then
+            Player.CameraMode = OriginalCameraMode
+        end
+        if OriginalDevCamOcclusion ~= nil then
+            Player.DevCameraOcclusionMode = OriginalDevCamOcclusion
+        end
+        if Camera then
+            if OriginalCameraType ~= nil then
+                Camera.CameraType = OriginalCameraType
+            end
+            if OriginalCameraSubject ~= nil then
+                Camera.CameraSubject = OriginalCameraSubject
+            end
+        end
+    end
+end
+
+-- =========================================================
+-- RENDER LOOP
+-- =========================================================
+
+RunService.RenderStepped:Connect(function(dt)
+    if not Camera then
+        Camera = workspace.CurrentCamera
+    end
+
+    if FovCircle and Camera then
+        FovCircle.Position = Vector2.new(
+            Camera.ViewportSize.X / 2,
+            Camera.ViewportSize.Y / 2
+        )
+
+        FovCircle.Radius = FovRadius
+    end
+
+    if TargetLockEnabled and Camera then
+        local Target = GetClosestHeadInFOV()
+
+        if Target then
+            Camera.CFrame = CFrame.new(
+                Camera.CFrame.Position,
+                Target.Position
+            )
+        end
+    end
+
+    if NoclipEnabled then
+        local Character = GetCharacter()
+
+        if Character then
+            for _, Part in ipairs(Character:GetDescendants()) do
+                if Part:IsA("BasePart") then
+                    Part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- =========================================================
+-- HITBOX UPDATE LOOP
+-- =========================================================
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if HitboxEnabled then
+            UpdateHitboxes()
+        end
+    end
+end)
+
+-- =========================================================
+-- SPEED / JUMP LOOP
+-- =========================================================
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if SpeedEnabled then
+            ApplySpeed()
+        end
+
+        if JumpEnabled then
+            ApplyJump()
+        end
+    end
+end)
+
+-- =========================================================
+-- CHARACTER ADDED
+-- =========================================================
+
+Player.CharacterAdded:Connect(function(Character)
+    RestoreNoclip()
+
+    task.wait(0.2)
+
+    local Humanoid = Character:WaitForChild("Humanoid")
+
+    OriginalWalkSpeed = Humanoid.WalkSpeed
+    OriginalJumpPower = Humanoid.JumpPower
+    OriginalJumpHeight = Humanoid.JumpHeight
+    OriginalBreakJointsOnDeath = Humanoid.BreakJointsOnDeath
+
+    if SpeedEnabled then
+        ApplySpeed()
+    end
+
+    if JumpEnabled then
+        ApplyJump()
+    end
+
+    if InfiniteJumpEnabled then
+        ApplyInfiniteJump(Character)
+    end
+
+    if NoclipEnabled then
+        SaveNoclipParts()
+    end
+end)
+
+if Player.Character then
+    local Humanoid = GetHumanoid(Player.Character)
+
+    if Humanoid then
+        OriginalWalkSpeed = Humanoid.WalkSpeed
+        OriginalJumpPower = Humanoid.JumpPower
+        OriginalJumpHeight = Humanoid.JumpHeight
+        OriginalBreakJointsOnDeath = Humanoid.BreakJointsOnDeath
+    end
+end
+
+-- =========================================================
+-- WINDOW
+-- =========================================================
+
+local Window = WindUI:CreateWindow({
+    Title = "XD Hub",
+    Icon = "crosshair",
+    Author = "Mobile",
+    Folder = "XDHub",
+    Size = UDim2.fromOffset(320, 420),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = false,
+})
+
+-- =========================================================
+-- PLAYER TAB
+-- =========================================================
+
+local MainTab = Window:Tab({
+    Title = "ผู้เล่น",
+    Icon = "user",
+})
+
+MainTab:Section({
+    Title = "Movement"
+})
+
+MainTab:Toggle({
+    Title = "Speed",
+    Desc = "เปิด / ปิด ความเร็ว",
+    Value = false,
+    Callback = function(Value)
+        SpeedEnabled = Value
+        ApplySpeed()
+    end
+})
+
+MainTab:Slider({
+    Title = "Speed Value",
+    Desc = "ปรับความเร็ว",
+    Step = 1,
+    Value = {
+        Min = 1,
+        Max = 120,
+        Default = 16
+    },
+    Callback = function(Value)
+        SpeedValue = Value
+
+        if SpeedEnabled then
+            ApplySpeed()
+        end
+    end
+})
+
+MainTab:Toggle({
+    Title = "Jump",
+    Desc = "ปรับแรงกระโดด",
+    Value = false,
+    Callback = function(Value)
+        JumpEnabled = Value
+        ApplyJump()
+    end
+})
+
+MainTab:Slider({
+    Title = "Jump Power",
+    Desc = "ปรับแรงกระโดด",
+    Step = 1,
+    Value = {
+        Min = 1,
+        Max = 120,
+        Default = 50
+    },
+    Callback = function(Value)
+        JumpValue = Value
+
+        if JumpEnabled then
+            ApplyJump()
+        end
+    end
+})
+
+MainTab:Toggle({
+    Title = "Infinite Jump",
+    Desc = "กระโดดกลางอากาศ + Anti Reset",
+    Value = false,
+    Callback = function(Value)
+        InfiniteJumpEnabled = Value
+
+        if Player.Character then
+            ApplyInfiniteJump(Player.Character)
+        end
+    end
+})
+
+MainTab:Toggle({
+    Title = "Noclip",
+    Desc = "ทะลุสิ่งกีดขวาง",
+    Value = false,
+    Callback = function(Value)
+        SetNoclip(Value)
+    end
+})
+
+-- =========================================================
+-- AIMBOT TAB
+-- =========================================================
+
+local CombatTab = Window:Tab({
+    Title = "Aimbot",
+    Icon = "crosshair",
+})
+
+CombatTab:Section({
+    Title = "Target Settings"
+})
+
+CombatTab:Toggle({
+    Title = "Aimbot",
+    Desc = "ล็อคเป้าหมายด้านหน้าใน FOV",
+    Value = false,
+    Callback = function(Value)
+        TargetLockEnabled = Value
+
+        if FovCircle then
+            FovCircle.Visible = Value
+        end
+    end
+})
+
+CombatTab:Slider({
+    Title = "ขนาด FOV",
+    Desc = "ปรับขนาด FOV",
+    Step = 1,
+    Value = {
+        Min = 50,
+        Max = 200,
+        Default = 100
+    },
+    Callback = function(Value)
+        FovRadius = Value
+    end
+})
+
+CombatTab:Section({
+    Title = "ESP Settings"
+})
+
+CombatTab:Toggle({
+    Title = "ESP ผู้เล่น",
+    Desc = "แสดงกรอบสีขาวรอบผู้เล่น",
+    Value = false,
+    Callback = function(Value)
+        ToggleAllESP(Value)
+    end
+})
+
+CombatTab:Input({
+    Title = "Hitbox Size",
+    Desc = "ขนาด Hitbox",
+    Placeholder = "10",
+    Callback = function(Value)
+        local Number = tonumber(Value)
+
+        if Number then
+            HitboxSize = math.clamp(Number, 2, 50)
+        end
+    end
+})
+
+CombatTab:Toggle({
+    Title = "Enable Hitbox",
+    Desc = "เปิด / ปิด Hitbox",
+    Value = false,
+    Callback = function(Value)
+        HitboxEnabled = Value
+
+        if not Value then
+            RestoreAllHitboxes()
+        end
+    end
+})
+
+-- =========================================================
+-- WARP TAB (จัดเรียงปุ่มให้ถูกต้อง)
+-- =========================================================
+
+local WarpTab = Window:Tab({
+    Title = "วาป",
+    Icon = "map-pin",
+})
+
+WarpTab:Section({
+    Title = "Teleport"
+})
+
+local SelectedWarpPlayer = nil
+local WarpDropdown = nil
+
+local function GetWarpPlayers()
+    local List = {}
+
+    for _, TargetPlayer in ipairs(Players:GetPlayers()) do
+        if TargetPlayer ~= Player then
+            table.insert(List, TargetPlayer.Name)
+        end
+    end
+
+    table.sort(List)
+
+    return List
+end
+
+local function GetWarpTarget()
+    if not SelectedWarpPlayer or SelectedWarpPlayer == "" or SelectedWarpPlayer == "ไม่มีผู้เล่น" then
+        return nil
+    end
+
+    return Players:FindFirstChild(SelectedWarpPlayer)
+end
+
+local InitialWarpPlayers = GetWarpPlayers()
+local InitialWarpValue = InitialWarpPlayers[1] or "ไม่มีผู้เล่น"
+
+if InitialWarpPlayers[1] then
+    SelectedWarpPlayer = InitialWarpPlayers[1]
+end
+
+WarpDropdown = WarpTab:Dropdown({
+    Title = "รายชื่อผู้เล่น",
+    Desc = "เลือกผู้เล่นที่จะวาปไปหา",
+    Values = #InitialWarpPlayers > 0 and InitialWarpPlayers or {"ไม่มีผู้เล่น"},
+    Value = InitialWarpValue,
+    AllowNone = true,
+    SearchBarEnabled = true,
+    Callback = function(Value)
+        if type(Value) == "table" then
+            Value = Value[1]
+        end
+
+        if not Value or Value == "" or Value == "ไม่มีผู้เล่น" then
+            SelectedWarpPlayer = nil
+            return
+        end
+
+        SelectedWarpPlayer = Value
+    end
+})
+
+local function RefreshWarpList()
+    if not WarpDropdown then
+        return
+    end
+
+    local List = GetWarpPlayers()
+
+    if #List > 0 then
+        WarpDropdown:Refresh(List)
+        WarpDropdown:Select(List[1])
+        SelectedWarpPlayer = List[1]
+    else
+        SelectedWarpPlayer = nil
+        WarpDropdown:Refresh({"ไม่มีผู้เล่น"})
+        WarpDropdown:Select("ไม่มีผู้เล่น")
+    end
+end
+
+-- สลับตำแหน่งปุ่ม "วาปไปหาผู้เล่น" ไว้ก่อน แล้วตามด้วย "รีเฟรชรายชื่อ"
+WarpTab:Button({
+    Title = "วาปไปหาผู้เล่น",
+    Desc = "ไปยังผู้เล่นที่เลือก",
+    Callback = function()
+        local Target = GetWarpTarget()
+
+        if not Target then
+            WindUI:Notify({
+                Title = "วาป",
+                Content = "กรุณาเลือกผู้เล่นก่อน",
+                Duration = 2,
+            })
+            return
+        end
+
+        local Character = Player.Character
+        local TargetCharacter = Target.Character
+
+        if not Character or not TargetCharacter then
+            WindUI:Notify({
+                Title = "วาป",
+                Content = "ไม่พบตัวละครของผู้เล่น",
+                Duration = 2,
+            })
+            return
+        end
+
+        local Root = GetRoot(Character)
+        local TargetRoot = GetRoot(TargetCharacter)
+
+        if not Root or not TargetRoot then
+            WindUI:Notify({
+                Title = "วาป",
+                Content = "ไม่พบ HumanoidRootPart",
+                Duration = 2,
+            })
+            return
+        end
+
+        Root.CFrame = TargetRoot.CFrame * CFrame.new(0, 3, 0)
+
+        WindUI:Notify({
+            Title = "วาปสำเร็จ",
+            Content = "ไปหา " .. Target.DisplayName,
+            Duration = 2,
+        })
+    end
+})
+
+WarpTab:Button({
+    Title = "รีเฟรชรายชื่อ",
+    Desc = "อัปเดตคนเข้า / คนออก",
+    Callback = function()
+        RefreshWarpList()
+
+        WindUI:Notify({
+            Title = "วาป",
+            Content = "อัปเดตรายชื่อแล้ว",
+            Duration = 2,
+        })
+    end
+})
+
+-- =========================================================
+-- TOOLS TAB
+-- =========================================================
+
+local ToolsTab = Window:Tab({
+    Title = "เครื่องมือ",
+    Icon = "wrench",
+})
+
+ToolsTab:Toggle({
+    Title = "Unlock Cam",
+    Desc = "ปลดล็อคมุมกล้อง / คืนค่าเดิม",
+    Value = false,
+    Callback = function(Value)
+        ToggleUnlockCam(Value)
+    end
+})
+
+ToolsTab:Toggle({
+    Title = "Fullbright",
+    Desc = "เพิ่มความสว่าง",
+    Value = false,
+    Callback = function(Value)
+        FullbrightEnabled = Value
+
+        if Value then
+            Bright()
+        else
+            RemoveBright()
+        end
+    end
+})
+
+ToolsTab:Toggle({
+    Title = "Instant Interaction",
+    Desc = "กดทันที",
+    Value = false,
+    Callback = function(Value)
+        ToggleInstantInteraction(Value)
+    end
+})
+
+ToolsTab:Button({
+    Title = "Jerk Off",
+    Desc = "Script ชัก",
+    Callback = function()
+        local Success, Error = pcall(function()
+            local Source = game:HttpGet("https://pastefy.app/wa3v2Vgm/raw")
+            local Spider = loadstring(Source)
+
+            if not Spider then
+                error("โหลด Script ไม่สำเร็จ")
+            end
+
+            Spider("script")
+        end)
+
+        if Success then
+            WindUI:Notify({
+                Title = "Spider",
+                Content = "Jerk Off",
+                Duration = 2,
+            })
+        else
+            WindUI:Notify({
+                Title = "Spider Error",
+                Content = tostring(Error),
+                Duration = 4,
+            })
+        end
+    end
+})
+
+ToolsTab:Button({
+    Title = "Reset Character",
+    Desc = "รีเซ็ตตัวละคร",
+    Callback = function()
+        local Character = Player.Character
+
+        if not Character then
+            return
+        end
+
+        local Humanoid = GetHumanoid(Character)
+
+        if Humanoid then
+            Humanoid.Health = 0
+        end
+    end
+})
+
+-- =========================================================
+-- CLEANUP WHEN PLAYER LEAVES
+-- =========================================================
+
+Players.PlayerRemoving:Connect(function(TargetPlayer)
+    if TargetPlayer.Character then
+        RemoveESP(TargetPlayer.Character)
+    end
+end)
+
+-- =========================================================
+-- WINDOW READY
+-- =========================================================
+
+WindUI:Notify({
+    Title = "XD Hub",
+    Content = "โหลดUiเเล้ว",
+    Duration = 3,
+})
