@@ -1,0 +1,4656 @@
+-- =========================================================
+-- XD HUB
+-- FULL FIXED VERSION
+-- Anti Duplicate Run = 404!
+-- WindUI Avatar Fixed
+-- Disable All + Reset Toggles
+-- Rejoin + Server Hop
+-- Black / White Theme
+-- Mobile 320x420
+-- =========================================================
+
+
+-- =========================================================
+-- 00 | ANTI DUPLICATE RUN
+-- =========================================================
+
+if getgenv().XDHubAlreadyRunning then
+    warn("404!")
+    return
+end
+
+getgenv().XDHubAlreadyRunning = true
+
+
+-- =========================================================
+-- 01 | LOAD WINDUI
+-- =========================================================
+
+local WindUI = loadstring(game:HttpGet(
+    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+))()
+
+
+-- =========================================================
+-- 02 | SERVICES
+-- =========================================================
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+local Player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Camera = workspace.CurrentCamera
+end)
+
+
+-- =========================================================
+-- 03 | SETTINGS
+-- =========================================================
+
+local SpeedEnabled = false
+local SpeedValue = 16
+local OriginalWalkSpeed = nil
+
+local JumpEnabled = false
+local JumpValue = 50
+local OriginalJumpPower = nil
+local OriginalJumpHeight = nil
+
+local InfiniteJumpEnabled = false
+local OriginalBreakJointsOnDeath = nil
+
+local TargetLockEnabled = false
+local TargetPart = "Head"
+local AimSmoothness = 5
+local FovRadius = 100
+local ShowFovCircle = false
+local AimbotTarget = nil
+
+local LockColor = Color3.fromRGB(255,255,255)
+
+local ESPEnabled = false
+local ESPColor = Color3.fromRGB(255,255,255)
+
+local NoclipEnabled = false
+local NoclipParts = {}
+
+local FullbrightEnabled = false
+local BrightVision = nil
+local OriginalLighting = nil
+
+local InstantInteractionEnabled = false
+local PromptOriginalValues = {}
+local PromptConnection = nil
+
+local HitboxEnabled = false
+local HitboxSize = 10
+local HitboxColor = Color3.fromRGB(255,255,255)
+local HitboxOriginalValues = {}
+
+local UnlockCamEnabled = false
+local OriginalCameraMode = nil
+local OriginalDevCamOcclusion = nil
+local OriginalCameraType = nil
+local OriginalCameraSubject = nil
+
+local SelectedBangPlayer = nil
+local BangEnabled = false
+local BangAnimation = nil
+local BangConnection = nil
+local BackDistance = 1.0
+
+local ResetStayPositionEnabled = false
+local SavedResetPosition = nil
+
+local DisableAllInProgress = false
+
+local AntiLagLoaded = false
+local CreatedTeleportTool = nil
+
+
+-- =========================================================
+-- 04 | TOGGLE REFERENCES
+-- =========================================================
+
+local SpeedToggle
+local JumpToggle
+local InfiniteJumpToggle
+local NoclipToggle
+
+local AimbotToggle
+local FovCircleToggle
+local ESPToggle
+local HitboxToggle
+
+local UnlockCamToggle
+local FullbrightToggle
+local InstantInteractionToggle
+local BangToggle
+local StayAfterResetToggle
+
+
+-- =========================================================
+-- 05 | SAFE TOGGLE SET
+-- =========================================================
+
+local function SetToggleUI(ToggleObject, State)
+
+    if not ToggleObject then
+        return
+    end
+
+    pcall(function()
+
+        if type(ToggleObject.Set) == "function" then
+            ToggleObject:Set(State)
+            return
+        end
+
+    end)
+
+    pcall(function()
+
+        if type(ToggleObject.SetValue) == "function" then
+            ToggleObject:SetValue(State)
+            return
+        end
+
+    end)
+
+    pcall(function()
+
+        if type(ToggleObject.SetState) == "function" then
+            ToggleObject:SetState(State)
+            return
+        end
+
+    end)
+
+end
+
+
+-- =========================================================
+-- 06 | AVATAR SYSTEM
+-- =========================================================
+
+local AvatarCache = {}
+
+local function GetAvatar(PlayerObject)
+
+    if not PlayerObject then
+        return ""
+    end
+
+    local UserId = PlayerObject.UserId
+
+    if AvatarCache[UserId] then
+        return AvatarCache[UserId]
+    end
+
+    local Avatar =
+        "rbxthumb://type=AvatarHeadShot&id="
+        .. tostring(UserId)
+        .. "&w=48&h=48"
+
+    AvatarCache[UserId] = Avatar
+
+    return Avatar
+end
+
+
+local function ClearAvatarCache(PlayerObject)
+
+    if not PlayerObject then
+        return
+    end
+
+    AvatarCache[PlayerObject.UserId] = nil
+
+end
+
+
+-- =========================================================
+-- 07 | CHARACTER HELPERS
+-- =========================================================
+
+local function GetCharacter()
+
+    return Player.Character
+
+end
+
+
+local function GetHumanoid(Character)
+
+    if not Character then
+        return nil
+    end
+
+    return Character:FindFirstChildOfClass("Humanoid")
+
+end
+
+
+local function GetRoot(Character)
+
+    if not Character then
+        return nil
+    end
+
+    return Character:FindFirstChild("HumanoidRootPart")
+
+end
+
+
+-- =========================================================
+-- 08 | RESET STAY POSITION
+-- =========================================================
+
+local function SaveResetPosition()
+
+    if not ResetStayPositionEnabled then
+        return
+    end
+
+    local Character = Player.Character
+
+    local Root =
+        Character
+        and Character:FindFirstChild("HumanoidRootPart")
+
+    if Root then
+        SavedResetPosition = Root.CFrame
+    end
+
+end
+
+
+local function ReturnToResetPosition(Character)
+
+    if not ResetStayPositionEnabled then
+        return
+    end
+
+    if not SavedResetPosition then
+        return
+    end
+
+    local Root =
+        Character:WaitForChild(
+            "HumanoidRootPart",
+            10
+        )
+
+    if not Root then
+        return
+    end
+
+    task.wait(0.25)
+
+    if Character.Parent then
+        Root.CFrame = SavedResetPosition
+    end
+
+end
+
+
+-- =========================================================
+-- 09 | FOV CIRCLE
+-- =========================================================
+
+local FovCircle = nil
+
+pcall(function()
+
+    if Drawing and Drawing.new then
+
+        local Success, Result =
+            pcall(function()
+                return Drawing.new("Circle")
+            end)
+
+        if Success and Result then
+
+            FovCircle = Result
+
+            if Camera then
+
+                FovCircle.Position =
+                    Vector2.new(
+                        Camera.ViewportSize.X / 2,
+                        Camera.ViewportSize.Y / 2
+                    )
+
+            end
+
+            FovCircle.Radius = FovRadius
+            FovCircle.Color = LockColor
+            FovCircle.Thickness = 1
+            FovCircle.Transparency = 0.8
+            FovCircle.Visible = false
+            FovCircle.Filled = false
+
+        end
+    end
+
+end)
+
+
+-- =========================================================
+-- 10 | SPEED
+-- =========================================================
+
+local function SaveSpeed(Humanoid)
+
+    if not Humanoid then
+        return
+    end
+
+    if OriginalWalkSpeed == nil then
+        OriginalWalkSpeed = Humanoid.WalkSpeed
+    end
+
+end
+
+
+local function ApplySpeed()
+
+    local Character = GetCharacter()
+    local Humanoid = GetHumanoid(Character)
+
+    if not Humanoid then
+        return
+    end
+
+    if SpeedEnabled then
+
+        SaveSpeed(Humanoid)
+
+        Humanoid.WalkSpeed = SpeedValue
+
+    else
+
+        if OriginalWalkSpeed ~= nil then
+            Humanoid.WalkSpeed = OriginalWalkSpeed
+        end
+
+        OriginalWalkSpeed = nil
+
+    end
+
+end
+
+
+-- =========================================================
+-- 11 | JUMP
+-- =========================================================
+
+local function SaveJump(Humanoid)
+
+    if not Humanoid then
+        return
+    end
+
+    if OriginalJumpPower == nil then
+        OriginalJumpPower = Humanoid.JumpPower
+    end
+
+    if OriginalJumpHeight == nil then
+        OriginalJumpHeight = Humanoid.JumpHeight
+    end
+
+end
+
+
+local function ApplyJump()
+
+    local Character = GetCharacter()
+    local Humanoid = GetHumanoid(Character)
+
+    if not Humanoid then
+        return
+    end
+
+    if JumpEnabled then
+
+        SaveJump(Humanoid)
+
+        if Humanoid.UseJumpPower then
+
+            Humanoid.JumpPower = JumpValue
+
+        else
+
+            Humanoid.JumpHeight =
+                JumpValue / 3
+
+        end
+
+    else
+
+        if Humanoid.UseJumpPower then
+
+            if OriginalJumpPower ~= nil then
+                Humanoid.JumpPower =
+                    OriginalJumpPower
+            end
+
+        else
+
+            if OriginalJumpHeight ~= nil then
+                Humanoid.JumpHeight =
+                    OriginalJumpHeight
+            end
+
+        end
+
+        OriginalJumpPower = nil
+        OriginalJumpHeight = nil
+
+    end
+
+end
+
+
+-- =========================================================
+-- 12 | INFINITE JUMP
+-- =========================================================
+
+UserInputService.JumpRequest:Connect(function()
+
+    if not InfiniteJumpEnabled then
+        return
+    end
+
+    local Humanoid =
+        GetHumanoid(GetCharacter())
+
+    if Humanoid
+    and Humanoid.Health > 0 then
+
+        Humanoid:ChangeState(
+            Enum.HumanoidStateType.Jumping
+        )
+
+    end
+
+end)
+
+
+local function ApplyInfiniteJump(Character)
+
+    local Humanoid =
+        GetHumanoid(Character)
+
+    if not Humanoid then
+        return
+    end
+
+    if InfiniteJumpEnabled then
+
+        if OriginalBreakJointsOnDeath == nil then
+
+            OriginalBreakJointsOnDeath =
+                Humanoid.BreakJointsOnDeath
+
+        end
+
+        Humanoid.BreakJointsOnDeath = false
+
+    else
+
+        if OriginalBreakJointsOnDeath ~= nil then
+
+            Humanoid.BreakJointsOnDeath =
+                OriginalBreakJointsOnDeath
+
+        end
+
+        OriginalBreakJointsOnDeath = nil
+
+    end
+
+end
+
+
+-- =========================================================
+-- 13 | AIMBOT
+-- =========================================================
+
+local AimbotRaycastParams =
+    RaycastParams.new()
+
+AimbotRaycastParams.FilterType =
+    Enum.RaycastFilterType.Exclude
+
+AimbotRaycastParams.IgnoreWater = true
+
+
+local function GetTargetPart(Character)
+
+    if not Character then
+        return nil
+    end
+
+    local Part =
+        Character:FindFirstChild(
+            TargetPart
+        )
+
+    if Part and Part:IsA("BasePart") then
+        return Part
+    end
+
+    return Character:FindFirstChild("Head")
+        or Character:FindFirstChild(
+            "HumanoidRootPart"
+        )
+
+end
+
+
+local function IsVisible(TargetPartObject)
+
+    if not Camera
+    or not TargetPartObject then
+        return false
+    end
+
+    local Character = GetCharacter()
+
+    local Root =
+        Character
+        and Character:FindFirstChild(
+            "HumanoidRootPart"
+        )
+
+    if not Root then
+        return false
+    end
+
+    AimbotRaycastParams.FilterDescendantsInstances = {
+        Character
+    }
+
+    local Direction =
+        TargetPartObject.Position
+        - Camera.CFrame.Position
+
+    local Result =
+        workspace:Raycast(
+            Camera.CFrame.Position,
+            Direction,
+            AimbotRaycastParams
+        )
+
+    if not Result then
+        return true
+    end
+
+    return Result.Instance:IsDescendantOf(
+        TargetPartObject.Parent
+    )
+
+end
+
+
+local function IsTargetInFront(TargetPartObject)
+
+    if not Camera
+    or not TargetPartObject then
+        return false
+    end
+
+    local Direction =
+        (
+            TargetPartObject.Position
+            - Camera.CFrame.Position
+        ).Unit
+
+    local Dot =
+        Camera.CFrame.LookVector:Dot(
+            Direction
+        )
+
+    return Dot > 0
+
+end
+
+
+local function GetClosestTargetInFOV()
+
+    if not Camera then
+        return nil
+    end
+
+    local Character =
+        GetCharacter()
+
+    local MyHumanoid =
+        GetHumanoid(Character)
+
+    if not MyHumanoid
+    or MyHumanoid.Health <= 0 then
+        return nil
+    end
+
+    local ScreenCenter =
+        Vector2.new(
+            Camera.ViewportSize.X / 2,
+            Camera.ViewportSize.Y / 2
+        )
+
+    local ClosestTarget = nil
+    local ClosestDistance = FovRadius
+
+    for _,TargetPlayer in ipairs(
+        Players:GetPlayers()
+    ) do
+
+        if TargetPlayer ~= Player
+        and TargetPlayer.Character then
+
+            local TargetCharacter =
+                TargetPlayer.Character
+
+            local Humanoid =
+                GetHumanoid(
+                    TargetCharacter
+                )
+
+            local TargetPartObject =
+                GetTargetPart(
+                    TargetCharacter
+                )
+
+            if Humanoid
+            and TargetPartObject
+            and Humanoid.Health > 0 then
+
+                local ScreenPosition, OnScreen =
+                    Camera:WorldToViewportPoint(
+                        TargetPartObject.Position
+                    )
+
+                if OnScreen
+                and ScreenPosition.Z > 0
+                and IsTargetInFront(
+                    TargetPartObject
+                ) then
+
+                    local TargetScreenPosition =
+                        Vector2.new(
+                            ScreenPosition.X,
+                            ScreenPosition.Y
+                        )
+
+                    local Distance =
+                        (
+                            TargetScreenPosition
+                            - ScreenCenter
+                        ).Magnitude
+
+                    if Distance <= FovRadius
+                    and Distance < ClosestDistance
+                    and IsVisible(
+                        TargetPartObject
+                    ) then
+
+                        ClosestDistance =
+                            Distance
+
+                        ClosestTarget =
+                            TargetPartObject
+
+                    end
+
+                end
+
+            end
+
+        end
+
+    end
+
+    return ClosestTarget
+
+end
+
+
+local function IsTargetInsideFOV(TargetPartObject)
+
+    if not Camera
+    or not TargetPartObject
+    or not TargetPartObject.Parent then
+
+        return false
+    end
+
+    local Humanoid =
+        GetHumanoid(
+            TargetPartObject.Parent
+        )
+
+    if not Humanoid
+    or Humanoid.Health <= 0 then
+        return false
+    end
+
+    if not IsTargetInFront(
+        TargetPartObject
+    ) then
+
+        return false
+    end
+
+    local ScreenPosition, OnScreen =
+        Camera:WorldToViewportPoint(
+            TargetPartObject.Position
+        )
+
+    if not OnScreen
+    or ScreenPosition.Z <= 0 then
+        return false
+    end
+
+    local Center =
+        Vector2.new(
+            Camera.ViewportSize.X / 2,
+            Camera.ViewportSize.Y / 2
+        )
+
+    local TargetPosition =
+        Vector2.new(
+            ScreenPosition.X,
+            ScreenPosition.Y
+        )
+
+    return (
+        TargetPosition - Center
+    ).Magnitude <= FovRadius
+
+end
+
+
+-- =========================================================
+-- 14 | ESP
+-- =========================================================
+
+local ESPName =
+    "XDHub_WhiteESP"
+
+
+local function RemoveESP(Character)
+
+    if not Character then
+        return
+    end
+
+    local Old =
+        Character:FindFirstChild(
+            ESPName
+        )
+
+    if Old then
+        Old:Destroy()
+    end
+
+end
+
+
+local function ApplyESP(Character)
+
+    if not ESPEnabled then
+        return
+    end
+
+    if not Character
+    or not Character.Parent then
+        return
+    end
+
+    local Highlight =
+        Character:FindFirstChild(
+            ESPName
+        )
+
+    if not Highlight then
+
+        Highlight =
+            Instance.new("Highlight")
+
+        Highlight.Name =
+            ESPName
+
+        Highlight.Adornee =
+            Character
+
+        Highlight.FillTransparency =
+            0.5
+
+        Highlight.OutlineTransparency =
+            0
+
+        Highlight.DepthMode =
+            Enum.HighlightDepthMode.AlwaysOnTop
+
+        Highlight.Parent =
+            Character
+
+    end
+
+    Highlight.FillColor =
+        ESPColor
+
+    Highlight.OutlineColor =
+        ESPColor
+
+end
+
+
+local function ToggleAllESP(State)
+
+    ESPEnabled = State
+
+    for _,TargetPlayer in ipairs(
+        Players:GetPlayers()
+    ) do
+
+        if TargetPlayer ~= Player
+        and TargetPlayer.Character then
+
+            if State then
+                ApplyESP(
+                    TargetPlayer.Character
+                )
+            else
+                RemoveESP(
+                    TargetPlayer.Character
+                )
+            end
+
+        end
+
+    end
+
+end
+
+
+local function UpdateESPColor()
+
+    if not ESPEnabled then
+        return
+    end
+
+    for _,TargetPlayer in ipairs(
+        Players:GetPlayers()
+    ) do
+
+        if TargetPlayer ~= Player
+        and TargetPlayer.Character then
+
+            local Highlight =
+                TargetPlayer.Character:
+                FindFirstChild(
+                    ESPName
+                )
+
+            if Highlight
+            and Highlight:IsA("Highlight") then
+
+                Highlight.FillColor =
+                    ESPColor
+
+                Highlight.OutlineColor =
+                    ESPColor
+
+            end
+
+        end
+
+    end
+
+end
+
+
+local function SetupESPPlayer(TargetPlayer)
+
+    if TargetPlayer == Player then
+        return
+    end
+
+    TargetPlayer.CharacterAdded:Connect(
+        function(Character)
+
+            task.wait(0.5)
+
+            if ESPEnabled then
+                ApplyESP(Character)
+            end
+
+        end
+    )
+
+    if TargetPlayer.Character
+    and ESPEnabled then
+
+        ApplyESP(
+            TargetPlayer.Character
+        )
+
+    end
+
+end
+
+
+for _,TargetPlayer in ipairs(
+    Players:GetPlayers()
+) do
+
+    SetupESPPlayer(
+        TargetPlayer
+    )
+
+end
+
+
+-- =========================================================
+-- 15 | NOCLIP
+-- =========================================================
+
+local function SaveNoclipParts()
+
+    NoclipParts = {}
+
+    local Character =
+        GetCharacter()
+
+    if not Character then
+        return
+    end
+
+    for _,Object in ipairs(
+        Character:GetDescendants()
+    ) do
+
+        if Object:IsA("BasePart") then
+
+            NoclipParts[Object] =
+                Object.CanCollide
+
+        end
+
+    end
+
+end
+
+
+local function RestoreNoclip()
+
+    for Part,OriginalValue in pairs(
+        NoclipParts
+    ) do
+
+        if Part
+        and Part.Parent then
+
+            Part.CanCollide =
+                OriginalValue
+
+        end
+
+    end
+
+    NoclipParts = {}
+
+end
+
+
+local function SetNoclip(State)
+
+    NoclipEnabled = State
+
+    if State then
+        SaveNoclipParts()
+    else
+        RestoreNoclip()
+    end
+
+end
+
+
+local function UpdateNoclip()
+
+    if not NoclipEnabled then
+        return
+    end
+
+    local Character =
+        GetCharacter()
+
+    if not Character then
+        return
+    end
+
+    for _,Object in ipairs(
+        Character:GetDescendants()
+    ) do
+
+        if Object:IsA("BasePart") then
+
+            if NoclipParts[Object] == nil then
+                NoclipParts[Object] =
+                    Object.CanCollide
+            end
+
+            Object.CanCollide = false
+
+        end
+
+    end
+
+end
+
+
+-- =========================================================
+-- 16 | HITBOX
+-- =========================================================
+
+local function SaveHitbox(HRP)
+
+    if not HRP then
+        return
+    end
+
+    if HitboxOriginalValues[HRP] then
+        return
+    end
+
+    HitboxOriginalValues[HRP] = {
+
+        Size =
+            HRP.Size,
+
+        Transparency =
+            HRP.Transparency,
+
+        Material =
+            HRP.Material,
+
+        Color =
+            HRP.Color,
+
+        CanCollide =
+            HRP.CanCollide
+
+    }
+
+end
+
+
+local function RestoreHitbox(HRP)
+
+    local Data =
+        HitboxOriginalValues[HRP]
+
+    if not Data then
+        return
+    end
+
+    if HRP
+    and HRP.Parent then
+
+        pcall(function()
+            HRP.Size =
+                Data.Size
+        end)
+
+        pcall(function()
+            HRP.Transparency =
+                Data.Transparency
+        end)
+
+        pcall(function()
+            HRP.Material =
+                Data.Material
+        end)
+
+        pcall(function()
+            HRP.Color =
+                Data.Color
+        end)
+
+        pcall(function()
+            HRP.CanCollide =
+                Data.CanCollide
+        end)
+
+    end
+
+    HitboxOriginalValues[HRP] = nil
+
+end
+
+
+local function RestoreAllHitboxes()
+
+    for HRP in pairs(
+        HitboxOriginalValues
+    ) do
+
+        RestoreHitbox(HRP)
+
+    end
+
+    HitboxOriginalValues = {}
+
+end
+
+
+local function UpdateHitboxes()
+
+    if not HitboxEnabled then
+        return
+    end
+
+    local DesiredSize =
+        Vector3.new(
+            HitboxSize,
+            HitboxSize,
+            HitboxSize
+        )
+
+    for _,TargetPlayer in ipairs(
+        Players:GetPlayers()
+    ) do
+
+        if TargetPlayer ~= Player
+        and TargetPlayer.Character then
+
+            local Character =
+                TargetPlayer.Character
+
+            local HRP =
+                Character:FindFirstChild(
+                    "HumanoidRootPart"
+                )
+
+            local Humanoid =
+                GetHumanoid(Character)
+
+            if HRP
+            and Humanoid
+            and Humanoid.Health > 0 then
+
+                SaveHitbox(HRP)
+
+                pcall(function()
+
+                    HRP.Size =
+                        DesiredSize
+
+                    HRP.Transparency =
+                        0.7
+
+                    HRP.Color =
+                        HitboxColor
+
+                    HRP.Material =
+                        Enum.Material.Neon
+
+                    HRP.CanCollide =
+                        false
+
+                end)
+
+            end
+
+        end
+
+    end
+
+end
+
+
+local function UpdateHitboxColor()
+
+    if not HitboxEnabled then
+        return
+    end
+
+    for HRP in pairs(
+        HitboxOriginalValues
+    ) do
+
+        if HRP
+        and HRP.Parent then
+
+            pcall(function()
+
+                HRP.Color =
+                    HitboxColor
+
+                HRP.Material =
+                    Enum.Material.Neon
+
+            end)
+
+        end
+
+    end
+
+end
+
+
+-- =========================================================
+-- 17 | FULLBRIGHT
+-- =========================================================
+
+local function SaveOriginalLighting()
+
+    if OriginalLighting then
+        return
+    end
+
+    OriginalLighting = {
+
+        Brightness =
+            Lighting.Brightness,
+
+        ClockTime =
+            Lighting.ClockTime,
+
+        FogEnd =
+            Lighting.FogEnd,
+
+        GlobalShadows =
+            Lighting.GlobalShadows
+
+    }
+
+end
+
+
+local function Bright()
+
+    if not FullbrightEnabled then
+        return
+    end
+
+    SaveOriginalLighting()
+
+    Lighting.Brightness = 3
+    Lighting.ClockTime = 14
+    Lighting.FogEnd = 100000
+    Lighting.GlobalShadows = false
+
+    if not BrightVision
+    or not BrightVision.Parent then
+
+        BrightVision =
+            Instance.new(
+                "ColorCorrectionEffect"
+            )
+
+        BrightVision.Name =
+            "XDHub_BrightVision"
+
+        BrightVision.Parent =
+            Lighting
+
+    end
+
+    BrightVision.Brightness =
+        0.25
+
+    BrightVision.Contrast =
+        0
+
+    BrightVision.Saturation =
+        0
+
+end
+
+
+local function RemoveBright()
+
+    if BrightVision then
+
+        pcall(function()
+
+            if BrightVision.Parent then
+                BrightVision:Destroy()
+            end
+
+        end)
+
+        BrightVision = nil
+
+    end
+
+    if OriginalLighting then
+
+        Lighting.Brightness =
+            OriginalLighting.Brightness
+
+        Lighting.ClockTime =
+            OriginalLighting.ClockTime
+
+        Lighting.FogEnd =
+            OriginalLighting.FogEnd
+
+        Lighting.GlobalShadows =
+            OriginalLighting.GlobalShadows
+
+        OriginalLighting = nil
+
+    end
+
+end
+
+
+-- =========================================================
+-- 18 | INSTANT INTERACTION
+-- =========================================================
+
+local function SavePrompt(Prompt)
+
+    if PromptOriginalValues[Prompt] then
+        return
+    end
+
+    PromptOriginalValues[Prompt] =
+        Prompt.HoldDuration
+
+end
+
+
+local function RestorePrompts()
+
+    for Prompt,Value in pairs(
+        PromptOriginalValues
+    ) do
+
+        if Prompt
+        and Prompt.Parent then
+
+            pcall(function()
+                Prompt.HoldDuration = Value
+            end)
+
+        end
+
+    end
+
+    PromptOriginalValues = {}
+
+end
+
+
+local function ToggleInstantInteraction(State)
+
+    InstantInteractionEnabled =
+        State
+
+    if PromptConnection then
+
+        PromptConnection:Disconnect()
+        PromptConnection = nil
+
+    end
+
+    if not State then
+
+        RestorePrompts()
+        return
+
+    end
+
+    for _,Prompt in ipairs(
+        workspace:GetDescendants()
+    ) do
+
+        if Prompt:IsA("ProximityPrompt") then
+
+            SavePrompt(Prompt)
+
+            Prompt.HoldDuration = 0
+
+        end
+
+    end
+
+    PromptConnection =
+        workspace.DescendantAdded:Connect(
+            function(Object)
+
+                if not InstantInteractionEnabled then
+                    return
+                end
+
+                if Object:IsA("ProximityPrompt") then
+
+                    SavePrompt(Object)
+
+                    Object.HoldDuration = 0
+
+                end
+
+            end
+        )
+
+end
+
+
+-- =========================================================
+-- 19 | UNLOCK CAMERA
+-- =========================================================
+
+local function ToggleUnlockCam(State)
+
+    if State then
+
+        if not UnlockCamEnabled then
+
+            OriginalCameraMode =
+                Player.CameraMode
+
+            OriginalDevCamOcclusion =
+                Player.DevCameraOcclusionMode
+
+            if Camera then
+
+                OriginalCameraType =
+                    Camera.CameraType
+
+                OriginalCameraSubject =
+                    Camera.CameraSubject
+
+            end
+
+        end
+
+        UnlockCamEnabled = true
+
+        Player.CameraMode =
+            Enum.CameraMode.Classic
+
+        Player.DevCameraOcclusionMode =
+            Enum.DevCameraOcclusionMode.Zoom
+
+        if Camera then
+
+            Camera.CameraType =
+                Enum.CameraType.Custom
+
+            local Character =
+                Player.Character
+
+            local Head =
+                Character
+                and Character:FindFirstChild(
+                    "Head"
+                )
+
+            if Head then
+
+                Camera.CameraSubject =
+                    Head
+
+            end
+
+        end
+
+    else
+
+        UnlockCamEnabled = false
+
+        if OriginalCameraMode ~= nil then
+
+            Player.CameraMode =
+                OriginalCameraMode
+
+        end
+
+        if OriginalDevCamOcclusion ~= nil then
+
+            Player.DevCameraOcclusionMode =
+                OriginalDevCamOcclusion
+
+        end
+
+        if Camera then
+
+            if OriginalCameraType ~= nil then
+
+                Camera.CameraType =
+                    OriginalCameraType
+
+            end
+
+            if OriginalCameraSubject ~= nil
+            and OriginalCameraSubject.Parent then
+
+                Camera.CameraSubject =
+                    OriginalCameraSubject
+
+            end
+
+        end
+
+        OriginalCameraMode = nil
+        OriginalDevCamOcclusion = nil
+        OriginalCameraType = nil
+        OriginalCameraSubject = nil
+
+    end
+
+end
+
+
+-- =========================================================
+-- 20 | BANG
+-- =========================================================
+
+local function StopBang()
+
+    BangEnabled = false
+
+    if BangConnection then
+
+        BangConnection:Disconnect()
+        BangConnection = nil
+
+    end
+
+    if BangAnimation then
+
+        pcall(function()
+
+            BangAnimation:Stop()
+            BangAnimation:Destroy()
+
+        end)
+
+        BangAnimation = nil
+
+    end
+
+end
+
+
+local function StartBang()
+
+    if not SelectedBangPlayer then
+        return false
+    end
+
+    local TargetPlayer =
+        Players:FindFirstChild(
+            SelectedBangPlayer
+        )
+
+    if not TargetPlayer then
+        return false
+    end
+
+    local Character =
+        Player.Character
+
+    if not Character then
+        return false
+    end
+
+    local Humanoid =
+        GetHumanoid(Character)
+
+    local Root =
+        GetRoot(Character)
+
+    if not Humanoid
+    or not Root then
+        return false
+    end
+
+    local TargetCharacter =
+        TargetPlayer.Character
+
+    if not TargetCharacter then
+        return false
+    end
+
+    local TargetRoot =
+        GetRoot(TargetCharacter)
+
+    if not TargetRoot then
+        return false
+    end
+
+    if BangConnection then
+        BangConnection:Disconnect()
+        BangConnection = nil
+    end
+
+    if BangAnimation then
+
+        pcall(function()
+            BangAnimation:Stop()
+            BangAnimation:Destroy()
+        end)
+
+        BangAnimation = nil
+
+    end
+
+    local Animation =
+        Instance.new("Animation")
+
+    Animation.AnimationId =
+        "rbxassetid://148840371"
+
+    local Success,Track =
+        pcall(function()
+
+            return Humanoid:LoadAnimation(
+                Animation
+            )
+
+        end)
+
+    if not Success
+    or not Track then
+
+        Animation:Destroy()
+        return false
+
+    end
+
+    BangAnimation = Track
+
+    BangAnimation:Play()
+    BangAnimation:AdjustSpeed(10)
+
+    BangEnabled = true
+
+    BangConnection =
+        RunService.Heartbeat:Connect(
+            function()
+
+                if not BangEnabled then
+                    return
+                end
+
+                if not TargetPlayer.Parent then
+
+                    StopBang()
+                    return
+
+                end
+
+                local CurrentCharacter =
+                    Player.Character
+
+                local CurrentTargetCharacter =
+                    TargetPlayer.Character
+
+                if not CurrentCharacter
+                or not CurrentTargetCharacter then
+                    return
+                end
+
+                local CurrentRoot =
+                    GetRoot(
+                        CurrentCharacter
+                    )
+
+                local CurrentTargetRoot =
+                    GetRoot(
+                        CurrentTargetCharacter
+                    )
+
+                if CurrentRoot
+                and CurrentTargetRoot then
+
+                    CurrentRoot.CFrame =
+                        CurrentTargetRoot.CFrame
+                        * CFrame.new(
+                            0,
+                            0,
+                            BackDistance
+                        )
+
+                end
+
+            end
+        )
+
+    return true
+
+end
+
+
+-- =========================================================
+-- 21 | TELEPORT TOOL
+-- =========================================================
+
+local function RemoveCreatedTeleportTool()
+
+    if CreatedTeleportTool then
+
+        pcall(function()
+
+            if CreatedTeleportTool.Parent then
+                CreatedTeleportTool:Destroy()
+            end
+
+        end)
+
+        CreatedTeleportTool = nil
+
+    end
+
+end
+
+
+local function CreateTeleportTool()
+
+    local Backpack =
+        Player:FindFirstChildOfClass(
+            "Backpack"
+        )
+
+    if not Backpack then
+        return nil
+    end
+
+    local Existing =
+        Backpack:FindFirstChild(
+            "Teleport"
+        )
+
+    if Existing
+    and Existing:IsA("Tool") then
+
+        CreatedTeleportTool =
+            Existing
+
+        WindUI:Notify({
+
+            Title = "Teleport Tool",
+            Content =
+                "มีไอเท็ม Teleport อยู่แล้ว",
+            Duration = 2
+
+        })
+
+        return Existing
+
+    end
+
+    local Mouse =
+        Player:GetMouse()
+
+    local Tool =
+        Instance.new("Tool")
+
+    Tool.Name =
+        "Teleport"
+
+    Tool.RequiresHandle =
+        false
+
+    Tool.CanBeDropped =
+        false
+
+    Tool.Activated:Connect(
+        function()
+
+            if not Mouse.Hit then
+                return
+            end
+
+            local Character =
+                Player.Character
+
+            if not Character then
+                return
+            end
+
+            local Root =
+                GetRoot(Character)
+
+            if not Root then
+                return
+            end
+
+            Root.CFrame =
+                CFrame.new(
+                    Mouse.Hit.Position
+                    + Vector3.new(
+                        0,
+                        2.5,
+                        0
+                    )
+                )
+
+        end
+    )
+
+    Tool.Parent =
+        Backpack
+
+    CreatedTeleportTool =
+        Tool
+
+    WindUI:Notify({
+
+        Title = "Teleport Tool",
+        Content =
+            "สร้างไอเท็ม Teleport แล้ว",
+        Duration = 2
+
+    })
+
+    return Tool
+
+end
+
+
+-- =========================================================
+-- 22 | DISABLE ALL
+-- =========================================================
+
+local function DisableAllFeatures()
+
+    DisableAllInProgress = true
+
+    -- SPEED
+    SpeedEnabled = false
+
+    local Character =
+        Player.Character
+
+    local Humanoid =
+        GetHumanoid(Character)
+
+    if Humanoid
+    and OriginalWalkSpeed ~= nil then
+
+        Humanoid.WalkSpeed =
+            OriginalWalkSpeed
+
+    end
+
+    OriginalWalkSpeed = nil
+
+
+    -- JUMP
+    JumpEnabled = false
+
+    if Humanoid then
+
+        if Humanoid.UseJumpPower then
+
+            if OriginalJumpPower ~= nil then
+
+                Humanoid.JumpPower =
+                    OriginalJumpPower
+
+            end
+
+        else
+
+            if OriginalJumpHeight ~= nil then
+
+                Humanoid.JumpHeight =
+                    OriginalJumpHeight
+
+            end
+
+        end
+
+    end
+
+    OriginalJumpPower = nil
+    OriginalJumpHeight = nil
+
+
+    -- INFINITE JUMP
+    InfiniteJumpEnabled = false
+
+    if Character then
+        ApplyInfiniteJump(
+            Character
+        )
+    end
+
+
+    -- NOCLIP
+    NoclipEnabled = false
+    RestoreNoclip()
+
+
+    -- AIMBOT
+    TargetLockEnabled = false
+    AimbotTarget = nil
+
+    ShowFovCircle = false
+
+    if FovCircle then
+        FovCircle.Visible = false
+    end
+
+
+    -- ESP
+    ToggleAllESP(false)
+
+
+    -- HITBOX
+    HitboxEnabled = false
+    RestoreAllHitboxes()
+
+
+    -- FULLBRIGHT
+    FullbrightEnabled = false
+    RemoveBright()
+
+
+    -- INSTANT INTERACTION
+    InstantInteractionEnabled = false
+
+    if PromptConnection then
+
+        PromptConnection:Disconnect()
+        PromptConnection = nil
+
+    end
+
+    RestorePrompts()
+
+
+    -- CAMERA
+    ToggleUnlockCam(false)
+
+
+    -- BANG
+    StopBang()
+
+
+    -- RESET POSITION
+    ResetStayPositionEnabled = false
+    SavedResetPosition = nil
+
+
+    -- TELEPORT TOOL
+    RemoveCreatedTeleportTool()
+
+
+    -- RESET UI
+    SetToggleUI(
+        SpeedToggle,
+        false
+    )
+
+    SetToggleUI(
+        JumpToggle,
+        false
+    )
+
+    SetToggleUI(
+        InfiniteJumpToggle,
+        false
+    )
+
+    SetToggleUI(
+        NoclipToggle,
+        false
+    )
+
+    SetToggleUI(
+        AimbotToggle,
+        false
+    )
+
+    SetToggleUI(
+        FovCircleToggle,
+        false
+    )
+
+    SetToggleUI(
+        ESPToggle,
+        false
+    )
+
+    SetToggleUI(
+        HitboxToggle,
+        false
+    )
+
+    SetToggleUI(
+        UnlockCamToggle,
+        false
+    )
+
+    SetToggleUI(
+        FullbrightToggle,
+        false
+    )
+
+    SetToggleUI(
+        InstantInteractionToggle,
+        false
+    )
+
+    SetToggleUI(
+        BangToggle,
+        false
+    )
+
+    SetToggleUI(
+        StayAfterResetToggle,
+        false
+    )
+
+
+    AimbotTarget = nil
+
+    DisableAllInProgress = false
+
+    WindUI:Notify({
+
+        Title = "XD Hub",
+
+        Content =
+            "ปิดฟังก์ชันทั้งหมดและคืนค่าปุ่มแล้ว",
+
+        Duration = 3
+
+    })
+
+end
+
+
+-- =========================================================
+-- 23 | WINDOW
+-- =========================================================
+
+local Window =
+    WindUI:CreateWindow({
+
+        Title = "XD Hub",
+
+        Icon = "cloud",
+
+        Author = "Mobile",
+
+        Folder = "XDHub",
+
+        Size =
+            UDim2.fromOffset(
+                320,
+                420
+            ),
+
+        Transparent = true,
+
+        Theme = "Dark",
+
+        Resizable = false,
+
+        User = {
+
+            Enabled = true,
+
+            Anonymous = false,
+
+            Callback = function()
+
+                print(
+                    "XD Hub Profile: "
+                    .. Player.DisplayName
+                )
+
+            end
+
+        }
+
+    })
+
+
+-- =========================================================
+-- 24 | PLAYER TAB
+-- =========================================================
+
+local MainTab =
+    Window:Tab({
+
+        Title = "Player",
+        Icon = "user"
+
+    })
+
+
+MainTab:Button({
+
+    Title = "Fly",
+
+    Desc = "เปิดระบบบิน",
+
+    Icon = "plane",
+
+    Callback = function()
+
+        local Success, Error =
+            pcall(function()
+
+                local Source =
+                    game:HttpGet(
+                        "https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"
+                    )
+
+                local Script =
+                    loadstring(Source)
+
+                if not Script then
+
+                    error(
+                        "โหลดสคริปต์บินไม่สำเร็จ"
+                    )
+
+                end
+
+                Script()
+
+            end)
+
+        WindUI:Notify({
+
+            Title =
+                Success
+                and "Fly"
+                or "Fly Error",
+
+            Content =
+                Success
+                and "เปิดเมนูบินแล้ว"
+                or tostring(Error),
+
+            Duration = 3
+
+        })
+
+    end
+
+})
+
+
+MainTab:Divider()
+
+
+MainTab:Section({
+
+    Title = "Movement",
+
+    Icon = "move"
+
+})
+
+
+SpeedToggle =
+    MainTab:Toggle({
+
+        Title = "Speed",
+
+        Desc = "เปิด / ปิด ความเร็ว",
+
+        Icon = "gauge",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            SpeedEnabled =
+                Value
+
+            ApplySpeed()
+
+        end
+
+    })
+
+
+MainTab:Slider({
+
+    Title = "Speed Value",
+
+    Desc = "ปรับความเร็วตัวละคร",
+
+    Step = 1,
+
+    Value = {
+
+        Min = 1,
+
+        Max = 120,
+
+        Default = 16
+
+    },
+
+    Callback = function(Value)
+
+        SpeedValue =
+            tonumber(Value)
+            or 16
+
+        if SpeedEnabled then
+            ApplySpeed()
+        end
+
+    end
+
+})
+
+
+JumpToggle =
+    MainTab:Toggle({
+
+        Title = "Jump",
+
+        Desc =
+            "เปิด / ปิดการปรับแรงกระโดด",
+
+        Icon = "arrow-up",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            JumpEnabled =
+                Value
+
+            ApplyJump()
+
+        end
+
+    })
+
+
+MainTab:Slider({
+
+    Title = "Jump Power",
+
+    Desc = "ปรับแรงกระโดด",
+
+    Step = 1,
+
+    Value = {
+
+        Min = 1,
+
+        Max = 120,
+
+        Default = 50
+
+    },
+
+    Callback = function(Value)
+
+        JumpValue =
+            tonumber(Value)
+            or 50
+
+        if JumpEnabled then
+            ApplyJump()
+        end
+
+    end
+
+})
+
+
+InfiniteJumpToggle =
+    MainTab:Toggle({
+
+        Title = "Infinite Jump",
+
+        Desc =
+            "กระโดดกลางอากาศ + ป้องกันการรีเซ็ต",
+
+        Icon = "infinity",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            InfiniteJumpEnabled =
+                Value
+
+            if Player.Character then
+
+                ApplyInfiniteJump(
+                    Player.Character
+                )
+
+            end
+
+        end
+
+    })
+
+
+NoclipToggle =
+    MainTab:Toggle({
+
+        Title = "Noclip",
+
+        Desc = "ทะลุสิ่งกีดขวาง",
+
+        Icon = "ghost",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            SetNoclip(Value)
+
+        end
+
+    })
+
+
+-- =========================================================
+-- 25 | AIMBOT TAB
+-- =========================================================
+
+local CombatTab =
+    Window:Tab({
+
+        Title = "Aimbot",
+
+        Icon = "crosshair"
+
+    })
+
+
+CombatTab:Section({
+
+    Title = "Target Settings",
+
+    Icon = "crosshair"
+
+})
+
+
+AimbotToggle =
+    CombatTab:Toggle({
+
+        Title = "Aimbot",
+
+        Desc =
+            "ล็อคเป้าหมายด้านหน้าใน FOV",
+
+        Icon = "crosshair",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            TargetLockEnabled =
+                Value
+
+            if not Value then
+                AimbotTarget = nil
+            end
+
+        end
+
+    })
+
+
+CombatTab:Dropdown({
+
+    Title = "Target Part",
+
+    Desc =
+        "เลือกส่วนของตัวละครที่จะล็อค",
+
+    Icon = "scan",
+
+    Values = {
+
+        "Head",
+
+        "HumanoidRootPart"
+
+    },
+
+    Value = "Head",
+
+    AllowNone = false,
+
+    Callback = function(Value)
+
+        local Selected =
+            Value
+
+        if type(Value) == "table" then
+
+            Selected =
+                Value[1]
+                or Value.Title
+
+        end
+
+        if Selected == "Head"
+        or Selected == "HumanoidRootPart" then
+
+            TargetPart =
+                Selected
+
+            AimbotTarget = nil
+
+        end
+
+    end
+
+})
+
+
+CombatTab:Slider({
+
+    Title = "Smoothness",
+
+    Desc =
+        "ปรับความนุ่มในการล็อคเป้า",
+
+    Icon = "activity",
+
+    Step = 1,
+
+    Value = {
+
+        Min = 1,
+
+        Max = 20,
+
+        Default = 5
+
+    },
+
+    Callback = function(Value)
+
+        AimSmoothness =
+            math.clamp(
+                tonumber(Value)
+                or 5,
+                1,
+                20
+            )
+
+    end
+
+})
+
+
+CombatTab:Slider({
+
+    Title = "FOV Size",
+
+    Desc =
+        "ปรับขนาดพื้นที่ล็อคเป้า",
+
+    Icon = "circle",
+
+    Step = 1,
+
+    Value = {
+
+        Min = 50,
+
+        Max = 200,
+
+        Default = 100
+
+    },
+
+    Callback = function(Value)
+
+        FovRadius =
+            tonumber(Value)
+            or 100
+
+    end
+
+})
+
+
+FovCircleToggle =
+    CombatTab:Toggle({
+
+        Title = "FOV Circle",
+
+        Desc =
+            "แสดง / ซ่อนวงพื้นที่ล็อค",
+
+        Icon = "circle-dashed",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            ShowFovCircle =
+                Value
+
+            if FovCircle then
+
+                FovCircle.Visible =
+                    Value
+
+            end
+
+        end
+
+    })
+
+
+CombatTab:Colorpicker({
+
+    Title = "Lock Color",
+
+    Desc =
+        "เปลี่ยนสีวง FOV",
+
+    Icon = "palette",
+
+    Default =
+        Color3.fromRGB(
+            255,
+            255,
+            255
+        ),
+
+    Flag = "LockColor",
+
+    Callback = function(Color)
+
+        LockColor =
+            Color
+
+        if FovCircle then
+
+            FovCircle.Color =
+                Color
+
+        end
+
+    end
+
+})
+
+
+CombatTab:Section({
+
+    Title = "ESP Settings",
+
+    Icon = "eye"
+
+})
+
+
+ESPToggle =
+    CombatTab:Toggle({
+
+        Title = "Player ESP",
+
+        Desc =
+            "แสดงกรอบรอบผู้เล่น",
+
+        Icon = "scan-eye",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            ToggleAllESP(Value)
+
+        end
+
+    })
+
+
+CombatTab:Colorpicker({
+
+    Title = "ESP Color",
+
+    Desc =
+        "เปลี่ยนสีกรอบผู้เล่น",
+
+    Icon = "palette",
+
+    Default =
+        ESPColor,
+
+    Flag = "ESPColor",
+
+    Callback = function(Color)
+
+        ESPColor =
+            Color
+
+        UpdateESPColor()
+
+    end
+
+})
+
+
+CombatTab:Divider()
+
+
+CombatTab:Section({
+
+    Title = "Hitbox Settings",
+
+    Icon = "maximize"
+
+})
+
+
+CombatTab:Input({
+
+    Title = "Hitbox Size",
+
+    Desc =
+        "กำหนดขนาด Hitbox",
+
+    Icon = "maximize",
+
+    Placeholder = "10",
+
+    Callback = function(Value)
+
+        local Number =
+            tonumber(Value)
+
+        if Number then
+
+            HitboxSize =
+                math.clamp(
+                    Number,
+                    2,
+                    50
+                )
+
+        end
+
+    end
+
+})
+
+
+CombatTab:Colorpicker({
+
+    Title = "Hitbox Color",
+
+    Desc =
+        "เปลี่ยนสี Hitbox",
+
+    Icon = "palette",
+
+    Default =
+        HitboxColor,
+
+    Flag = "HitboxColor",
+
+    Callback = function(Color)
+
+        HitboxColor =
+            Color
+
+        UpdateHitboxColor()
+
+    end
+
+})
+
+
+HitboxToggle =
+    CombatTab:Toggle({
+
+        Title = "Enable Hitbox",
+
+        Desc =
+            "เปิด / ปิด Hitbox",
+
+        Icon = "expand",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            HitboxEnabled =
+                Value
+
+            if Value then
+
+                UpdateHitboxes()
+
+            else
+
+                RestoreAllHitboxes()
+
+            end
+
+        end
+
+    })
+
+
+-- =========================================================
+-- 26 | TELEPORT TAB
+-- =========================================================
+
+local WarpTab =
+    Window:Tab({
+
+        Title = "Teleport",
+
+        Icon = "map-pin"
+
+    })
+
+
+WarpTab:Section({
+
+    Title = "Teleport",
+
+    Icon = "navigation"
+
+})
+
+
+local SelectedWarpPlayer = nil
+local WarpDropdown = nil
+
+
+local function GetWarpPlayers()
+
+    local List = {}
+
+    for _,TargetPlayer in ipairs(
+        Players:GetPlayers()
+    ) do
+
+        if TargetPlayer ~= Player then
+
+            table.insert(
+                List,
+                {
+
+                    Title =
+                        TargetPlayer.Name,
+
+                    Desc =
+                        TargetPlayer.DisplayName,
+
+                    Icon =
+                        GetAvatar(
+                            TargetPlayer
+                        ),
+
+                    IconSize = 28
+
+                }
+            )
+
+        end
+
+    end
+
+    table.sort(
+        List,
+        function(A,B)
+
+            return A.Title:lower()
+                < B.Title:lower()
+
+        end
+    )
+
+    return List
+
+end
+
+
+local function GetWarpTarget()
+
+    if not SelectedWarpPlayer
+    or SelectedWarpPlayer == ""
+    or SelectedWarpPlayer == "ไม่มีผู้เล่น" then
+
+        return nil
+    end
+
+    return Players:FindFirstChild(
+        SelectedWarpPlayer
+    )
+
+end
+
+
+local function GetDropdownName(Value)
+
+    local Name = nil
+
+    if type(Value) == "table" then
+
+        if Value.Title then
+
+            Name =
+                Value.Title
+
+        elseif Value[1] then
+
+            if type(Value[1]) == "table" then
+
+                Name =
+                    Value[1].Title
+
+            else
+
+                Name =
+                    Value[1]
+
+            end
+
+        end
+
+    elseif type(Value) == "string" then
+
+        Name =
+            Value
+
+    end
+
+    return Name
+
+end
+
+
+local InitialWarpPlayers =
+    GetWarpPlayers()
+
+local InitialWarpValue =
+    InitialWarpPlayers[1]
+    or {
+
+        Title =
+            "ไม่มีผู้เล่น",
+
+        Icon = ""
+
+    }
+
+
+if InitialWarpPlayers[1] then
+
+    SelectedWarpPlayer =
+        InitialWarpPlayers[1].Title
+
+end
+
+
+WarpDropdown =
+    WarpTab:Dropdown({
+
+        Title = "Player",
+
+        Desc =
+            "เลือกผู้เล่นที่จะวาปไปหา",
+
+        Icon = "users",
+
+        Values =
+            #InitialWarpPlayers > 0
+            and InitialWarpPlayers
+            or {
+
+                {
+                    Title =
+                        "ไม่มีผู้เล่น",
+
+                    Icon = ""
+
+                }
+
+            },
+
+        Value =
+            InitialWarpValue,
+
+        AllowNone = true,
+
+        SearchBarEnabled = true,
+
+        Callback = function(Value)
+
+            local Name =
+                GetDropdownName(
+                    Value
+                )
+
+            if not Name
+            or Name == ""
+            or Name == "ไม่มีผู้เล่น" then
+
+                SelectedWarpPlayer =
+                    nil
+
+                return
+
+            end
+
+            SelectedWarpPlayer =
+                Name
+
+        end
+
+    })
+
+
+local function RefreshWarpList()
+
+    if not WarpDropdown then
+        return
+    end
+
+    local List =
+        GetWarpPlayers()
+
+    if #List > 0 then
+
+        WarpDropdown:Refresh(
+            List
+        )
+
+        SelectedWarpPlayer =
+            List[1].Title
+
+        if WarpDropdown.Select then
+
+            pcall(function()
+
+                WarpDropdown:Select(
+                    List[1]
+                )
+
+            end)
+
+        end
+
+    else
+
+        SelectedWarpPlayer =
+            nil
+
+        local Empty = {
+
+            {
+                Title =
+                    "ไม่มีผู้เล่น",
+
+                Icon = ""
+
+            }
+
+        }
+
+        WarpDropdown:Refresh(
+            Empty
+        )
+
+        if WarpDropdown.Select then
+
+            pcall(function()
+
+                WarpDropdown:Select(
+                    Empty[1]
+                )
+
+            end)
+
+        end
+
+    end
+
+end
+
+
+WarpTab:Button({
+
+    Title = "Teleport",
+
+    Desc =
+        "วาปไปยังผู้เล่นที่เลือก",
+
+    Icon = "send",
+
+    Callback = function()
+
+        local Target =
+            GetWarpTarget()
+
+        if not Target then
+
+            WindUI:Notify({
+
+                Title = "Teleport",
+
+                Content =
+                    "กรุณาเลือกผู้เล่นก่อน",
+
+                Duration = 2
+
+            })
+
+            return
+
+        end
+
+        local Character =
+            Player.Character
+
+        local TargetCharacter =
+            Target.Character
+
+        if not Character
+        or not TargetCharacter then
+            return
+        end
+
+        local Root =
+            GetRoot(Character)
+
+        local TargetRoot =
+            GetRoot(TargetCharacter)
+
+        if not Root
+        or not TargetRoot then
+            return
+        end
+
+        Root.CFrame =
+            TargetRoot.CFrame
+            * CFrame.new(
+                0,
+                3,
+                0
+            )
+
+        WindUI:Notify({
+
+            Title =
+                "Teleport Success",
+
+            Content =
+                "วาปไปหา "
+                .. Target.DisplayName,
+
+            Duration = 2
+
+        })
+
+    end
+
+})
+
+
+WarpTab:Button({
+
+    Title = "Refresh Players",
+
+    Desc =
+        "อัปเดตรายชื่อผู้เล่น",
+
+    Icon = "refresh-cw",
+
+    Callback = function()
+
+        RefreshWarpList()
+
+        WindUI:Notify({
+
+            Title =
+                "Teleport",
+
+            Content =
+                "อัปเดตรายชื่อแล้ว",
+
+            Duration = 2
+
+        })
+
+    end
+
+})
+
+
+-- =========================================================
+-- 27 | TROLL
+-- =========================================================
+
+local TrollTab =
+    Window:Tab({
+
+        Title = "Troll",
+
+        Icon = "smile"
+
+    })
+
+
+TrollTab:Section({
+
+    Title =
+        "Player Selection",
+
+    Icon =
+        "users"
+
+})
+
+
+local function GetBangPlayers()
+
+    local List = {}
+
+    for _,TargetPlayer in ipairs(
+        Players:GetPlayers()
+    ) do
+
+        if TargetPlayer ~= Player then
+
+            table.insert(
+                List,
+                {
+
+                    Title =
+                        TargetPlayer.Name,
+
+                    Desc =
+                        TargetPlayer.DisplayName,
+
+                    Icon =
+                        GetAvatar(
+                            TargetPlayer
+                        ),
+
+                    IconSize = 28
+
+                }
+            )
+
+        end
+
+    end
+
+    table.sort(
+        List,
+        function(A,B)
+
+            return A.Title:lower()
+                < B.Title:lower()
+
+        end
+    )
+
+    return List
+
+end
+
+
+local BangDropdown = nil
+
+
+local InitialBangPlayers =
+    GetBangPlayers()
+
+local InitialBangValue =
+    InitialBangPlayers[1]
+    or {
+
+        Title =
+            "ไม่มีผู้เล่น",
+
+        Icon = ""
+
+    }
+
+
+if InitialBangPlayers[1] then
+
+    SelectedBangPlayer =
+        InitialBangPlayers[1].Title
+
+end
+
+
+BangDropdown =
+    TrollTab:Dropdown({
+
+        Title = "Player",
+
+        Desc =
+            "เลือกผู้เล่นที่จะแกล้ง",
+
+        Icon =
+            "user-round",
+
+        Values =
+            #InitialBangPlayers > 0
+            and InitialBangPlayers
+            or {
+
+                {
+                    Title =
+                        "ไม่มีผู้เล่น",
+
+                    Icon = ""
+
+                }
+
+            },
+
+        Value =
+            InitialBangValue,
+
+        AllowNone = true,
+
+        SearchBarEnabled = true,
+
+        Callback = function(Value)
+
+            local Name =
+                GetDropdownName(
+                    Value
+                )
+
+            if not Name
+            or Name == ""
+            or Name == "ไม่มีผู้เล่น" then
+
+                SelectedBangPlayer =
+                    nil
+
+                return
+
+            end
+
+            SelectedBangPlayer =
+                Name
+
+        end
+
+    })
+
+
+local function RefreshBangList()
+
+    if not BangDropdown then
+        return
+    end
+
+    local List =
+        GetBangPlayers()
+
+    if #List > 0 then
+
+        BangDropdown:Refresh(
+            List
+        )
+
+        SelectedBangPlayer =
+            List[1].Title
+
+        if BangDropdown.Select then
+
+            pcall(function()
+
+                BangDropdown:Select(
+                    List[1]
+                )
+
+            end)
+
+        end
+
+    else
+
+        SelectedBangPlayer =
+            nil
+
+        local Empty = {
+
+            {
+                Title =
+                    "ไม่มีผู้เล่น",
+
+                Icon = ""
+
+            }
+
+        }
+
+        BangDropdown:Refresh(
+            Empty
+        )
+
+        if BangDropdown.Select then
+
+            pcall(function()
+
+                BangDropdown:Select(
+                    Empty[1]
+                )
+
+            end)
+
+        end
+
+    end
+
+end
+
+
+TrollTab:Button({
+
+    Title =
+        "Refresh Players",
+
+    Desc =
+        "อัปเดตรายชื่อผู้เล่น",
+
+    Icon =
+        "refresh-cw",
+
+    Callback = function()
+
+        RefreshBangList()
+
+        WindUI:Notify({
+
+            Title =
+                "Troll",
+
+            Content =
+                "อัปเดตรายชื่อแล้ว",
+
+            Duration = 2
+
+        })
+
+    end
+
+})
+
+
+BangToggle =
+    TrollTab:Toggle({
+
+        Title = "Bang",
+
+        Desc =
+            "เปิด / ปิดการทำงาน",
+
+        Icon = "zap",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            if Value then
+
+                if not SelectedBangPlayer then
+
+                    if BangToggle then
+
+                        SetToggleUI(
+                            BangToggle,
+                            false
+                        )
+
+                    end
+
+                    BangEnabled =
+                        false
+
+                    WindUI:Notify({
+
+                        Title =
+                            "Troll",
+
+                        Content =
+                            "กรุณาเลือกผู้เล่นก่อน",
+
+                        Duration = 2
+
+                    })
+
+                    return
+
+                end
+
+                local Started =
+                    StartBang()
+
+                if not Started then
+
+                    BangEnabled =
+                        false
+
+                    SetToggleUI(
+                        BangToggle,
+                        false
+                    )
+
+                    WindUI:Notify({
+
+                        Title =
+                            "Troll",
+
+                        Content =
+                            "ไม่สามารถเริ่ม Bang ได้",
+
+                        Duration = 3
+
+                    })
+
+                end
+
+            else
+
+                StopBang()
+
+            end
+
+        end
+
+    })
+
+
+-- =========================================================
+-- 28 | TOOLS
+-- =========================================================
+
+local ToolsTab =
+    Window:Tab({
+
+        Title = "Tools",
+
+        Icon = "wrench"
+
+    })
+
+
+ToolsTab:Section({
+
+    Title = "Utilities",
+
+    Icon = "tool"
+
+})
+
+
+ToolsTab:Button({
+
+    Title = "Teleport Tool",
+
+    Desc =
+        "สร้างไอเท็มสำหรับวาปไปยังตำแหน่งที่แตะ",
+
+    Icon = "map-pin",
+
+    Callback = function()
+
+        CreateTeleportTool()
+
+    end
+
+})
+
+
+ToolsTab:Button({
+
+    Title = "Anti Lag",
+
+    Desc =
+        "เปิดระบบลดแลค",
+
+    Icon = "gauge",
+
+    Callback = function()
+
+        if AntiLagLoaded then
+
+            WindUI:Notify({
+
+                Title =
+                    "Anti Lag",
+
+                Content =
+                    "เปิดใช้งานไปแล้ว",
+
+                Duration = 2
+
+            })
+
+            return
+
+        end
+
+        local Success, Error =
+            pcall(function()
+
+                local Source =
+                    game:HttpGet(
+                        "https://raw.githubusercontent.com/VikiChardd/AntiLag_TSB/main/Protect_MeowTBS1999.lua.txt"
+                    )
+
+                local Script =
+                    loadstring(Source)
+
+                if not Script then
+
+                    error(
+                        "โหลดสคริปต์ลดแลคไม่สำเร็จ"
+                    )
+
+                end
+
+                Script()
+
+            end)
+
+        if Success then
+
+            AntiLagLoaded =
+                true
+
+            WindUI:Notify({
+
+                Title =
+                    "Anti Lag",
+
+                Content =
+                    "เปิดใช้งานแล้ว",
+
+                Duration = 2
+
+            })
+
+        else
+
+            WindUI:Notify({
+
+                Title =
+                    "Anti Lag Error",
+
+                Content =
+                    tostring(Error),
+
+                Duration = 4
+
+            })
+
+        end
+
+    end
+
+})
+
+
+UnlockCamToggle =
+    ToolsTab:Toggle({
+
+        Title =
+            "Unlock Camera",
+
+        Desc =
+            "ปลดล็อคมุมกล้องและคืนค่าเดิม",
+
+        Icon =
+            "camera",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            ToggleUnlockCam(
+                Value
+            )
+
+        end
+
+    })
+
+
+FullbrightToggle =
+    ToolsTab:Toggle({
+
+        Title =
+            "Fullbright",
+
+        Desc =
+            "เพิ่มความสว่างให้มองเห็นชัดขึ้น",
+
+        Icon =
+            "sun",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            FullbrightEnabled =
+                Value
+
+            if Value then
+                Bright()
+            else
+                RemoveBright()
+            end
+
+        end
+
+    })
+
+
+InstantInteractionToggle =
+    ToolsTab:Toggle({
+
+        Title =
+            "Instant Interaction",
+
+        Desc =
+            "กดใช้งานทันทีโดยไม่ต้องรอ",
+
+        Icon =
+            "hand",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            ToggleInstantInteraction(
+                Value
+            )
+
+        end
+
+    })
+
+
+ToolsTab:Button({
+
+    Title =
+        "Jerk Off",
+
+    Desc =
+        "เล่นแอนิเมชันจากสคริปต์",
+
+    Icon =
+        "play",
+
+    Callback = function()
+
+        local Success, Error =
+            pcall(function()
+
+                local Source =
+                    game:HttpGet(
+                        "https://pastefy.app/wa3v2Vgm/raw"
+                    )
+
+                local Script =
+                    loadstring(Source)
+
+                if not Script then
+
+                    error(
+                        "โหลด Script ไม่สำเร็จ"
+                    )
+
+                end
+
+                Script("script")
+
+            end)
+
+        WindUI:Notify({
+
+            Title =
+                Success
+                and "Jerk Off"
+                or "Jerk Off Error",
+
+            Content =
+                Success
+                and "เปิดใช้งานแล้ว"
+                or tostring(Error),
+
+            Duration =
+                Success
+                and 2
+                or 4
+
+        })
+
+    end
+
+})
+
+
+ToolsTab:Button({
+
+    Title =
+        "Reset Character",
+
+    Desc =
+        "รีเซ็ตตัวละคร",
+
+    Icon =
+        "rotate-ccw",
+
+    Callback = function()
+
+        SaveResetPosition()
+
+        local Character =
+            Player.Character
+
+        if not Character then
+            return
+        end
+
+        local Humanoid =
+            GetHumanoid(
+                Character
+            )
+
+        if Humanoid then
+
+            Humanoid.Health = 0
+
+        end
+
+    end
+
+})
+
+
+StayAfterResetToggle =
+    ToolsTab:Toggle({
+
+        Title =
+            "Stay After Reset",
+
+        Desc =
+            "รีตัวแล้วกลับมาตำแหน่งเดิม",
+
+        Icon =
+            "map-pin-check",
+
+        Value = false,
+
+        Callback = function(Value)
+
+            if DisableAllInProgress then
+                return
+            end
+
+            ResetStayPositionEnabled =
+                Value
+
+            if Value then
+
+                SaveResetPosition()
+
+            else
+
+                SavedResetPosition =
+                    nil
+
+            end
+
+        end
+
+    })
+
+
+-- =========================================================
+-- 29 | SETTINGS
+-- =========================================================
+
+local SettingsTab =
+    Window:Tab({
+
+        Title =
+            "Settings",
+
+        Icon =
+            "settings"
+
+    })
+
+
+SettingsTab:Section({
+
+    Title =
+        "Settings",
+
+    Icon =
+        "settings"
+
+})
+
+
+SettingsTab:Dropdown({
+
+    Title =
+        "UI Theme",
+
+    Desc =
+        "เปลี่ยนสีธีมของ XD Hub",
+
+    Icon =
+        "palette",
+
+    Values = {
+
+        "1. ดำ",
+
+        "2. ขาว"
+
+    },
+
+    Value =
+        "1. ดำ",
+
+    AllowNone =
+        false,
+
+    Callback = function(Value)
+
+        local Selected =
+            Value
+
+        if type(Value) == "table" then
+
+            Selected =
+                Value[1]
+                or Value.Title
+
+        end
+
+        if Selected == "1. ดำ" then
+
+            WindUI:SetTheme(
+                "Dark"
+            )
+
+            WindUI:Notify({
+
+                Title =
+                    "UI Theme",
+
+                Content =
+                    "เปลี่ยนเป็นธีมสีดำแล้ว",
+
+                Duration = 2
+
+            })
+
+        elseif Selected == "2. ขาว" then
+
+            WindUI:SetTheme(
+                "Light"
+            )
+
+            WindUI:Notify({
+
+                Title =
+                    "UI Theme",
+
+                Content =
+                    "เปลี่ยนเป็นธีมสีขาวแล้ว",
+
+                Duration = 2
+
+            })
+
+        end
+
+    end
+
+})
+
+
+SettingsTab:Divider()
+
+
+SettingsTab:Button({
+
+    Title =
+        "Rejoin Server",
+
+    Desc =
+        "ออกแล้วเข้าเซิร์ฟเวอร์เดิมอีกครั้ง",
+
+    Icon =
+        "rotate-cw",
+
+    Callback = function()
+
+        WindUI:Notify({
+
+            Title =
+                "Rejoin Server",
+
+            Content =
+                "กำลังเข้าเซิร์ฟเวอร์เดิม...",
+
+            Duration = 2
+
+        })
+
+        task.wait(0.2)
+
+        pcall(function()
+
+            TeleportService:
+                TeleportToPlaceInstance(
+                    game.PlaceId,
+                    game.JobId,
+                    Player
+                )
+
+        end)
+
+    end
+
+})
+
+
+SettingsTab:Button({
+
+    Title =
+        "Server Hop",
+
+    Desc =
+        "ย้ายไปเซิร์ฟเวอร์อื่น",
+
+    Icon =
+        "shuffle",
+
+    Callback = function()
+
+        local Success, Error =
+            pcall(function()
+
+                local PlaceId =
+                    game.PlaceId
+
+                local CurrentJobId =
+                    game.JobId
+
+                local Cursor = ""
+
+                for Attempt = 1,3 do
+
+                    local URL =
+                        "https://games.roblox.com/v1/games/"
+                        .. tostring(PlaceId)
+                        .. "/servers/Public?sortOrder=Asc&limit=100"
+
+                    if Cursor ~= "" then
+
+                        URL =
+                            URL
+                            .. "&cursor="
+                            .. HttpService:UrlEncode(
+                                Cursor
+                            )
+
+                    end
+
+                    local Response =
+                        game:HttpGet(
+                            URL
+                        )
+
+                    local Data =
+                        HttpService:JSONDecode(
+                            Response
+                        )
+
+                    if Data
+                    and Data.data then
+
+                        for _,Server in ipairs(
+                            Data.data
+                        ) do
+
+                            if Server.id
+                            and Server.id ~= CurrentJobId
+                            and Server.playing
+                            and Server.maxPlayers
+                            and Server.playing < Server.maxPlayers then
+
+                                WindUI:Notify({
+
+                                    Title =
+                                        "Server Hop",
+
+                                    Content =
+                                        "กำลังย้ายเซิร์ฟเวอร์...",
+
+                                    Duration = 2
+
+                                })
+
+                                task.wait(0.2)
+
+                                TeleportService:
+                                    TeleportToPlaceInstance(
+                                        PlaceId,
+                                        Server.id,
+                                        Player
+                                    )
+
+                                return
+
+                            end
+
+                        end
+
+                    end
+
+                    Cursor =
+                        Data
+                        and Data.nextPageCursor
+                        or ""
+
+                    if Cursor == "" then
+                        break
+                    end
+
+                end
+
+                error(
+                    "ไม่พบเซิร์ฟเวอร์อื่น"
+                )
+
+            end)
+
+        if not Success then
+
+            WindUI:Notify({
+
+                Title =
+                    "Server Hop Error",
+
+                Content =
+                    tostring(Error),
+
+                Duration = 4
+
+            })
+
+        end
+
+    end
+
+})
+
+
+SettingsTab:Divider()
+
+
+SettingsTab:Button({
+
+    Title =
+        "Disable All",
+
+    Desc =
+        "ปิดฟังก์ชันทั้งหมดของ XD Hub",
+
+    Icon =
+        "power",
+
+    Callback = function()
+
+        DisableAllFeatures()
+
+    end
+
+})
+
+
+-- =========================================================
+-- 30 | MAIN LOOP
+-- =========================================================
+
+local AimbotTimer = 0
+local NoclipTimer = 0
+
+
+RunService.RenderStepped:Connect(
+    function(DeltaTime)
+
+        if not Camera then
+            Camera =
+                workspace.CurrentCamera
+        end
+
+
+        -- FOV
+
+        if FovCircle
+        and Camera then
+
+            FovCircle.Position =
+                Vector2.new(
+                    Camera.ViewportSize.X / 2,
+                    Camera.ViewportSize.Y / 2
+                )
+
+            FovCircle.Radius =
+                FovRadius
+
+            FovCircle.Color =
+                LockColor
+
+            FovCircle.Visible =
+                ShowFovCircle
+
+        end
+
+
+        -- AIMBOT
+
+        if TargetLockEnabled
+        and Camera then
+
+            AimbotTimer =
+                AimbotTimer
+                + DeltaTime
+
+            if AimbotTimer >= 0.05 then
+
+                AimbotTimer = 0
+
+                if not AimbotTarget
+                or not AimbotTarget.Parent
+                or not IsTargetInsideFOV(
+                    AimbotTarget
+                )
+                or not IsVisible(
+                    AimbotTarget
+                ) then
+
+                    AimbotTarget =
+                        GetClosestTargetInFOV()
+
+                end
+
+            end
+
+
+            if AimbotTarget
+            and AimbotTarget.Parent
+            and AimbotTarget:IsDescendantOf(
+                workspace
+            )
+            and IsTargetInsideFOV(
+                AimbotTarget
+            ) then
+
+                local CameraPosition =
+                    Camera.CFrame.Position
+
+                local TargetPosition =
+                    AimbotTarget.Position
+
+                local TargetCFrame =
+                    CFrame.new(
+                        CameraPosition,
+                        TargetPosition
+                    )
+
+                local Alpha =
+                    1 /
+                    math.max(
+                        AimSmoothness,
+                        1
+                    )
+
+                Camera.CFrame =
+                    Camera.CFrame:Lerp(
+                        TargetCFrame,
+                        Alpha
+                    )
+
+            else
+
+                AimbotTarget =
+                    nil
+
+            end
+
+        else
+
+            AimbotTimer = 0
+            AimbotTarget = nil
+
+        end
+
+
+        -- NOCLIP
+
+        if NoclipEnabled then
+
+            NoclipTimer =
+                NoclipTimer
+                + DeltaTime
+
+            if NoclipTimer >= 0.12 then
+
+                NoclipTimer = 0
+
+                UpdateNoclip()
+
+            end
+
+        else
+
+            NoclipTimer = 0
+
+        end
+
+    end
+)
+
+
+-- =========================================================
+-- 31 | HITBOX LOOP
+-- =========================================================
+
+task.spawn(function()
+
+    while task.wait(0.18) do
+
+        if HitboxEnabled then
+            UpdateHitboxes()
+        end
+
+    end
+
+end)
+
+
+-- =========================================================
+-- 32 | SPEED / JUMP LOOP
+-- =========================================================
+
+task.spawn(function()
+
+    while task.wait(0.20) do
+
+        if SpeedEnabled then
+            ApplySpeed()
+        end
+
+        if JumpEnabled then
+            ApplyJump()
+        end
+
+    end
+
+end)
+
+
+-- =========================================================
+-- 33 | PLAYER JOIN
+-- =========================================================
+
+Players.PlayerAdded:Connect(
+    function(TargetPlayer)
+
+        SetupESPPlayer(
+            TargetPlayer
+        )
+
+        task.wait(0.2)
+
+        if WarpDropdown then
+            RefreshWarpList()
+        end
+
+        if BangDropdown then
+            RefreshBangList()
+        end
+
+    end
+)
+
+
+-- =========================================================
+-- 34 | PLAYER LEAVE
+-- =========================================================
+
+Players.PlayerRemoving:Connect(
+    function(TargetPlayer)
+
+        ClearAvatarCache(
+            TargetPlayer
+        )
+
+        if TargetPlayer.Character then
+
+            RemoveESP(
+                TargetPlayer.Character
+            )
+
+        end
+
+
+        if SelectedBangPlayer
+        == TargetPlayer.Name then
+
+            StopBang()
+
+            SelectedBangPlayer =
+                nil
+
+            if BangToggle then
+
+                SetToggleUI(
+                    BangToggle,
+                    false
+                )
+
+            end
+
+        end
+
+
+        if AimbotTarget
+        and TargetPlayer.Character
+        and AimbotTarget:IsDescendantOf(
+            TargetPlayer.Character
+        ) then
+
+            AimbotTarget =
+                nil
+
+        end
+
+
+        task.defer(function()
+
+            if WarpDropdown then
+                RefreshWarpList()
+            end
+
+            if BangDropdown then
+                RefreshBangList()
+            end
+
+        end)
+
+    end
+)
+
+
+-- =========================================================
+-- 35 | CHARACTER RESPAWN
+-- =========================================================
+
+Player.CharacterAdded:Connect(
+    function(Character)
+
+        RestoreNoclip()
+
+        AimbotTarget =
+            nil
+
+        if HitboxEnabled then
+            task.defer(
+                UpdateHitboxes
+            )
+        end
+
+        task.wait(0.25)
+
+        local Humanoid =
+            Character:WaitForChild(
+                "Humanoid",
+                10
+            )
+
+        if not Humanoid then
+            return
+        end
+
+
+        -- เก็บค่าเดิมของตัวละครใหม่
+        OriginalWalkSpeed =
+            Humanoid.WalkSpeed
+
+        OriginalJumpPower =
+            Humanoid.JumpPower
+
+        OriginalJumpHeight =
+            Humanoid.JumpHeight
+
+        OriginalBreakJointsOnDeath =
+            Humanoid.BreakJointsOnDeath
+
+
+        -- SPEED
+        if SpeedEnabled then
+            ApplySpeed()
+        end
+
+
+        -- JUMP
+        if JumpEnabled then
+            ApplyJump()
+        end
+
+
+        -- INFINITE JUMP
+        if InfiniteJumpEnabled then
+            ApplyInfiniteJump(
+                Character
+            )
+        end
+
+
+        -- NOCLIP
+        if NoclipEnabled then
+            SaveNoclipParts()
+        end
+
+
+        -- ESP ไม่ต้องทำกับ LocalPlayer
+
+
+        -- CAMERA
+        if UnlockCamEnabled then
+
+            task.wait(0.1)
+
+            -- ไม่เรียก ToggleUnlockCam(true)
+            -- เพราะจะเขียนค่ากล้องเดิมทับ
+
+            Player.CameraMode =
+                Enum.CameraMode.Classic
+
+            Player.DevCameraOcclusionMode =
+                Enum.DevCameraOcclusionMode.Zoom
+
+            if Camera then
+
+                Camera.CameraType =
+                    Enum.CameraType.Custom
+
+                local Head =
+                    Character:FindFirstChild(
+                        "Head"
+                    )
+
+                if Head then
+
+                    Camera.CameraSubject =
+                        Head
+
+                end
+
+            end
+
+        end
+
+
+        -- BANG
+        if BangEnabled
+        and SelectedBangPlayer then
+
+            task.wait(1)
+
+            StopBang()
+
+            if SelectedBangPlayer then
+
+                StartBang()
+
+            end
+
+        end
+
+
+        -- STAY AFTER RESET
+        if ResetStayPositionEnabled
+        and SavedResetPosition then
+
+            ReturnToResetPosition(
+                Character
+            )
+
+        end
+
+    end
+)
+
+
+-- =========================================================
+-- 36 | SAVE INITIAL CHARACTER VALUES
+-- =========================================================
+
+if Player.Character then
+
+    local Humanoid =
+        GetHumanoid(
+            Player.Character
+        )
+
+    if Humanoid then
+
+        OriginalWalkSpeed =
+            Humanoid.WalkSpeed
+
+        OriginalJumpPower =
+            Humanoid.JumpPower
+
+        OriginalJumpHeight =
+            Humanoid.JumpHeight
+
+        OriginalBreakJointsOnDeath =
+            Humanoid.BreakJointsOnDeath
+
+    end
+
+end
+
+
+-- =========================================================
+-- 37 | READY
+-- =========================================================
+
+WindUI:Notify({
+
+    Title =
+        "XD Hub",
+
+    Content =
+        "โหลด XD Hub ",
+
+    Duration = 3
+
+})
