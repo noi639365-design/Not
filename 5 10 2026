@@ -1,9 +1,10 @@
 -- =========================================================
--- XD HUB
+-- XD HUB (Optimized with Avatar)
+-- FULL FIXED VERSION
 -- =========================================================
 
 -- =========================================================
--- 00 | ANTI DUPLICATE RUN
+-- 00 | ANTI DUPLICATE
 -- =========================================================
 
 if getgenv().XDHubAlreadyRunning then
@@ -13,7 +14,6 @@ end
 
 getgenv().XDHubAlreadyRunning = true
 
-
 -- =========================================================
 -- 01 | LOAD WINDUI
 -- =========================================================
@@ -21,7 +21,6 @@ getgenv().XDHubAlreadyRunning = true
 local WindUI = loadstring(game:HttpGet(
     "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
 ))()
-
 
 -- =========================================================
 -- 02 | SERVICES
@@ -37,14 +36,12 @@ local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-
 workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
     Camera = workspace.CurrentCamera
 end)
 
-
 -- =========================================================
--- 03 | SETTINGS
+-- 03 | STATES
 -- =========================================================
 
 local SpeedEnabled = false
@@ -66,10 +63,10 @@ local FovRadius = 100
 local ShowFovCircle = false
 local AimbotTarget = nil
 
-local LockColor = Color3.fromRGB(255,255,255)
+local LockColor = Color3.fromRGB(255, 255, 255)
 
 local ESPEnabled = false
-local ESPColor = Color3.fromRGB(255,255,255)
+local ESPColor = Color3.fromRGB(255, 255, 255)
 
 local NoclipEnabled = false
 local NoclipParts = {}
@@ -84,7 +81,7 @@ local PromptConnection = nil
 
 local HitboxEnabled = false
 local HitboxSize = 10
-local HitboxColor = Color3.fromRGB(255,255,255)
+local HitboxColor = Color3.fromRGB(255, 255, 255)
 local HitboxOriginalValues = {}
 
 local UnlockCamEnabled = false
@@ -103,10 +100,8 @@ local ResetStayPositionEnabled = false
 local SavedResetPosition = nil
 
 local DisableAllInProgress = false
-
 local AntiLagLoaded = false
 local CreatedTeleportTool = nil
-
 
 -- =========================================================
 -- 04 | TOGGLE REFERENCES
@@ -128,46 +123,27 @@ local InstantInteractionToggle
 local BangToggle
 local StayAfterResetToggle
 
-
 -- =========================================================
--- 05 | SAFE TOGGLE SET
+-- 05 | UI TOGGLE HELPER
 -- =========================================================
 
 local function SetToggleUI(ToggleObject, State)
-
     if not ToggleObject then
         return
     end
 
     pcall(function()
-
         if type(ToggleObject.Set) == "function" then
             ToggleObject:Set(State)
-            return
-        end
 
-    end)
-
-    pcall(function()
-
-        if type(ToggleObject.SetValue) == "function" then
+        elseif type(ToggleObject.SetValue) == "function" then
             ToggleObject:SetValue(State)
-            return
-        end
 
-    end)
-
-    pcall(function()
-
-        if type(ToggleObject.SetState) == "function" then
+        elseif type(ToggleObject.SetState) == "function" then
             ToggleObject:SetState(State)
-            return
         end
-
     end)
-
 end
-
 
 -- =========================================================
 -- 06 | AVATAR SYSTEM
@@ -175,8 +151,15 @@ end
 
 local AvatarCache = {}
 
-local function GetAvatar(PlayerObject)
+local function ClearAvatarCache(UserId)
+    if UserId then
+        AvatarCache[UserId] = nil
+    else
+        AvatarCache = {}
+    end
+end
 
+local function GetAvatar(PlayerObject)
     if not PlayerObject then
         return ""
     end
@@ -197,263 +180,126 @@ local function GetAvatar(PlayerObject)
     return Avatar
 end
 
-
-local function ClearAvatarCache(PlayerObject)
-
-    if not PlayerObject then
-        return
-    end
-
-    AvatarCache[PlayerObject.UserId] = nil
-
-end
-
-
 -- =========================================================
 -- 07 | CHARACTER HELPERS
 -- =========================================================
 
 local function GetCharacter()
-
     return Player.Character
-
 end
 
-
-local function GetHumanoid(Character)
-
-    if not Character then
-        return nil
-    end
-
-    return Character:FindFirstChildOfClass("Humanoid")
-
+local function GetHumanoid(Char)
+    return Char and Char:FindFirstChildOfClass("Humanoid")
 end
 
-
-local function GetRoot(Character)
-
-    if not Character then
-        return nil
-    end
-
-    return Character:FindFirstChild("HumanoidRootPart")
-
+local function GetRoot(Char)
+    return Char and Char:FindFirstChild("HumanoidRootPart")
 end
-
 
 -- =========================================================
--- 08 | RESET STAY POSITION
--- =========================================================
-
-local function SaveResetPosition()
-
-    if not ResetStayPositionEnabled then
-        return
-    end
-
-    local Character = Player.Character
-
-    local Root =
-        Character
-        and Character:FindFirstChild("HumanoidRootPart")
-
-    if Root then
-        SavedResetPosition = Root.CFrame
-    end
-
-end
-
-
-local function ReturnToResetPosition(Character)
-
-    if not ResetStayPositionEnabled then
-        return
-    end
-
-    if not SavedResetPosition then
-        return
-    end
-
-    local Root =
-        Character:WaitForChild(
-            "HumanoidRootPart",
-            10
-        )
-
-    if not Root then
-        return
-    end
-
-    task.wait(0.25)
-
-    if Character.Parent then
-        Root.CFrame = SavedResetPosition
-    end
-
-end
-
-
--- =========================================================
--- 09 | FOV CIRCLE
+-- 08 | FOV CIRCLE
 -- =========================================================
 
 local FovCircle = nil
 
 pcall(function()
-
     if Drawing and Drawing.new then
+        FovCircle = Drawing.new("Circle")
 
-        local Success, Result =
-            pcall(function()
-                return Drawing.new("Circle")
-            end)
-
-        if Success and Result then
-
-            FovCircle = Result
-
-            if Camera then
-
-                FovCircle.Position =
-                    Vector2.new(
-                        Camera.ViewportSize.X / 2,
-                        Camera.ViewportSize.Y / 2
-                    )
-
-            end
-
-            FovCircle.Radius = FovRadius
-            FovCircle.Color = LockColor
-            FovCircle.Thickness = 1
-            FovCircle.Transparency = 0.8
-            FovCircle.Visible = false
-            FovCircle.Filled = false
-
+        if Camera then
+            FovCircle.Position = Vector2.new(
+                Camera.ViewportSize.X / 2,
+                Camera.ViewportSize.Y / 2
+            )
         end
-    end
 
+        FovCircle.Radius = FovRadius
+        FovCircle.Color = LockColor
+        FovCircle.Thickness = 1
+        FovCircle.Transparency = 0.8
+        FovCircle.Visible = false
+        FovCircle.Filled = false
+    end
 end)
 
-
 -- =========================================================
--- 10 | SPEED
+-- 09 | SPEED
 -- =========================================================
-
-local function SaveSpeed(Humanoid)
-
-    if not Humanoid then
-        return
-    end
-
-    if OriginalWalkSpeed == nil then
-        OriginalWalkSpeed = Humanoid.WalkSpeed
-    end
-
-end
-
 
 local function ApplySpeed()
+    local Hum = GetHumanoid(GetCharacter())
 
-    local Character = GetCharacter()
-    local Humanoid = GetHumanoid(Character)
-
-    if not Humanoid then
+    if not Hum then
         return
     end
 
     if SpeedEnabled then
 
-        SaveSpeed(Humanoid)
+        if OriginalWalkSpeed == nil then
+            OriginalWalkSpeed = Hum.WalkSpeed
+        end
 
-        Humanoid.WalkSpeed = SpeedValue
+        Hum.WalkSpeed = SpeedValue
 
     else
 
         if OriginalWalkSpeed ~= nil then
-            Humanoid.WalkSpeed = OriginalWalkSpeed
+            Hum.WalkSpeed = OriginalWalkSpeed
         end
 
         OriginalWalkSpeed = nil
-
     end
-
 end
 
-
 -- =========================================================
--- 11 | JUMP
+-- 10 | JUMP
 -- =========================================================
-
-local function SaveJump(Humanoid)
-
-    if not Humanoid then
-        return
-    end
-
-    if OriginalJumpPower == nil then
-        OriginalJumpPower = Humanoid.JumpPower
-    end
-
-    if OriginalJumpHeight == nil then
-        OriginalJumpHeight = Humanoid.JumpHeight
-    end
-
-end
-
 
 local function ApplyJump()
+    local Hum = GetHumanoid(GetCharacter())
 
-    local Character = GetCharacter()
-    local Humanoid = GetHumanoid(Character)
-
-    if not Humanoid then
+    if not Hum then
         return
     end
 
     if JumpEnabled then
 
-        SaveJump(Humanoid)
+        if OriginalJumpPower == nil then
+            OriginalJumpPower = Hum.JumpPower
+        end
 
-        if Humanoid.UseJumpPower then
+        if OriginalJumpHeight == nil then
+            OriginalJumpHeight = Hum.JumpHeight
+        end
 
-            Humanoid.JumpPower = JumpValue
-
+        if Hum.UseJumpPower then
+            Hum.JumpPower = JumpValue
         else
-
-            Humanoid.JumpHeight =
-                JumpValue / 3
-
+            Hum.JumpHeight = JumpValue / 3
         end
 
     else
 
-        if Humanoid.UseJumpPower then
+        if Hum.UseJumpPower then
 
             if OriginalJumpPower ~= nil then
-                Humanoid.JumpPower =
-                    OriginalJumpPower
+                Hum.JumpPower = OriginalJumpPower
             end
 
         else
 
             if OriginalJumpHeight ~= nil then
-                Humanoid.JumpHeight =
-                    OriginalJumpHeight
+                Hum.JumpHeight = OriginalJumpHeight
             end
-
         end
 
         OriginalJumpPower = nil
         OriginalJumpHeight = nil
-
     end
-
 end
 
-
 -- =========================================================
--- 12 | INFINITE JUMP
+-- 11 | INFINITE JUMP
 -- =========================================================
 
 UserInputService.JumpRequest:Connect(function()
@@ -462,160 +308,110 @@ UserInputService.JumpRequest:Connect(function()
         return
     end
 
-    local Humanoid =
-        GetHumanoid(GetCharacter())
+    local Hum = GetHumanoid(GetCharacter())
 
-    if Humanoid
-    and Humanoid.Health > 0 then
-
-        Humanoid:ChangeState(
-            Enum.HumanoidStateType.Jumping
-        )
-
+    if Hum and Hum.Health > 0 then
+        Hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
-
 end)
 
+local function ApplyInfiniteJump(Char)
 
-local function ApplyInfiniteJump(Character)
+    local Hum = GetHumanoid(Char)
 
-    local Humanoid =
-        GetHumanoid(Character)
-
-    if not Humanoid then
+    if not Hum then
         return
     end
 
     if InfiniteJumpEnabled then
 
         if OriginalBreakJointsOnDeath == nil then
-
-            OriginalBreakJointsOnDeath =
-                Humanoid.BreakJointsOnDeath
-
+            OriginalBreakJointsOnDeath = Hum.BreakJointsOnDeath
         end
 
-        Humanoid.BreakJointsOnDeath = false
+        Hum.BreakJointsOnDeath = false
 
     else
 
         if OriginalBreakJointsOnDeath ~= nil then
-
-            Humanoid.BreakJointsOnDeath =
-                OriginalBreakJointsOnDeath
-
+            Hum.BreakJointsOnDeath = OriginalBreakJointsOnDeath
         end
 
         OriginalBreakJointsOnDeath = nil
-
     end
-
 end
 
-
 -- =========================================================
--- 13 | AIMBOT
+-- 12 | AIMBOT
 -- =========================================================
 
-local AimbotRaycastParams =
-    RaycastParams.new()
+local AimbotRaycastParams = RaycastParams.new()
 
-AimbotRaycastParams.FilterType =
-    Enum.RaycastFilterType.Exclude
-
+AimbotRaycastParams.FilterType = Enum.RaycastFilterType.Exclude
 AimbotRaycastParams.IgnoreWater = true
 
+local function GetTargetPart(Char)
 
-local function GetTargetPart(Character)
-
-    if not Character then
+    if not Char then
         return nil
     end
 
-    local Part =
-        Character:FindFirstChild(
-            TargetPart
-        )
+    local Part = Char:FindFirstChild(TargetPart)
 
     if Part and Part:IsA("BasePart") then
         return Part
     end
 
-    return Character:FindFirstChild("Head")
-        or Character:FindFirstChild(
-            "HumanoidRootPart"
-        )
-
+    return Char:FindFirstChild("Head")
+        or Char:FindFirstChild("HumanoidRootPart")
 end
 
+local function IsVisible(TargetPartObj)
 
-local function IsVisible(TargetPartObject)
-
-    if not Camera
-    or not TargetPartObject then
+    if not Camera or not TargetPartObj then
         return false
     end
 
-    local Character = GetCharacter()
+    local Char = GetCharacter()
 
-    local Root =
-        Character
-        and Character:FindFirstChild(
-            "HumanoidRootPart"
-        )
-
-    if not Root then
+    if not Char then
         return false
     end
 
     AimbotRaycastParams.FilterDescendantsInstances = {
-        Character
+        Char
     }
 
     local Direction =
-        TargetPartObject.Position
-        - Camera.CFrame.Position
+        TargetPartObj.Position - Camera.CFrame.Position
 
-    local Result =
-        workspace:Raycast(
-            Camera.CFrame.Position,
-            Direction,
-            AimbotRaycastParams
-        )
-
-    if not Result then
-        return true
-    end
-
-    return Result.Instance:IsDescendantOf(
-        TargetPartObject.Parent
+    local Result = workspace:Raycast(
+        Camera.CFrame.Position,
+        Direction,
+        AimbotRaycastParams
     )
 
+    return not Result
+        or Result.Instance:IsDescendantOf(TargetPartObj.Parent)
 end
 
+local function IsTargetInFront(TargetPartObj)
 
-local function IsTargetInFront(TargetPartObject)
-
-    if not Camera
-    or not TargetPartObject then
+    if not Camera or not TargetPartObj then
         return false
     end
 
     local Direction =
-        (
-            TargetPartObject.Position
-            - Camera.CFrame.Position
-        ).Unit
+        TargetPartObj.Position - Camera.CFrame.Position
 
-    local Dot =
-        Camera.CFrame.LookVector:Dot(
-            Direction
-        )
+    if Direction.Magnitude <= 0 then
+        return false
+    end
 
-    return Dot > 0
-
+    return Camera.CFrame.LookVector:Dot(
+        Direction.Unit
+    ) > 0
 end
-
 
 local function GetClosestTargetInFOV()
 
@@ -623,388 +419,208 @@ local function GetClosestTargetInFOV()
         return nil
     end
 
-    local Character =
-        GetCharacter()
-
-    local MyHumanoid =
-        GetHumanoid(Character)
-
-    if not MyHumanoid
-    or MyHumanoid.Health <= 0 then
-        return nil
-    end
-
-    local ScreenCenter =
-        Vector2.new(
-            Camera.ViewportSize.X / 2,
-            Camera.ViewportSize.Y / 2
-        )
+    local Center = Vector2.new(
+        Camera.ViewportSize.X / 2,
+        Camera.ViewportSize.Y / 2
+    )
 
     local ClosestTarget = nil
     local ClosestDistance = FovRadius
 
-    for _,TargetPlayer in ipairs(
-        Players:GetPlayers()
-    ) do
+    for _, tp in ipairs(Players:GetPlayers()) do
 
-        if TargetPlayer ~= Player
-        and TargetPlayer.Character then
+        if tp ~= Player and tp.Character then
 
-            local TargetCharacter =
-                TargetPlayer.Character
+            local Hum = GetHumanoid(tp.Character)
+            local Part = GetTargetPart(tp.Character)
 
-            local Humanoid =
-                GetHumanoid(
-                    TargetCharacter
-                )
+            if Hum
+                and Part
+                and Hum.Health > 0
+                and IsTargetInFront(Part)
+                and IsVisible(Part)
+            then
 
-            local TargetPartObject =
-                GetTargetPart(
-                    TargetCharacter
-                )
+                local Pos, OnScreen =
+                    Camera:WorldToViewportPoint(Part.Position)
 
-            if Humanoid
-            and TargetPartObject
-            and Humanoid.Health > 0 then
-
-                local ScreenPosition, OnScreen =
-                    Camera:WorldToViewportPoint(
-                        TargetPartObject.Position
-                    )
-
-                if OnScreen
-                and ScreenPosition.Z > 0
-                and IsTargetInFront(
-                    TargetPartObject
-                ) then
-
-                    local TargetScreenPosition =
-                        Vector2.new(
-                            ScreenPosition.X,
-                            ScreenPosition.Y
-                        )
+                if OnScreen and Pos.Z > 0 then
 
                     local Distance =
                         (
-                            TargetScreenPosition
-                            - ScreenCenter
+                            Vector2.new(Pos.X, Pos.Y)
+                            - Center
                         ).Magnitude
 
                     if Distance <= FovRadius
-                    and Distance < ClosestDistance
-                    and IsVisible(
-                        TargetPartObject
-                    ) then
+                        and Distance < ClosestDistance
+                    then
 
-                        ClosestDistance =
-                            Distance
-
-                        ClosestTarget =
-                            TargetPartObject
-
+                        ClosestDistance = Distance
+                        ClosestTarget = Part
                     end
-
                 end
-
             end
-
         end
-
     end
 
     return ClosestTarget
-
 end
 
-
-local function IsTargetInsideFOV(TargetPartObject)
+local function IsTargetInsideFOV(TargetPartObj)
 
     if not Camera
-    or not TargetPartObject
-    or not TargetPartObject.Parent then
-
+        or not TargetPartObj
+        or not TargetPartObj.Parent
+    then
         return false
     end
 
-    local Humanoid =
-        GetHumanoid(
-            TargetPartObject.Parent
-        )
+    local Hum = GetHumanoid(TargetPartObj.Parent)
 
-    if not Humanoid
-    or Humanoid.Health <= 0 then
+    if not Hum or Hum.Health <= 0 then
         return false
     end
 
-    if not IsTargetInFront(
-        TargetPartObject
-    ) then
-
+    if not IsTargetInFront(TargetPartObj) then
         return false
     end
 
-    local ScreenPosition, OnScreen =
-        Camera:WorldToViewportPoint(
-            TargetPartObject.Position
-        )
+    local Pos, OnScreen =
+        Camera:WorldToViewportPoint(TargetPartObj.Position)
 
-    if not OnScreen
-    or ScreenPosition.Z <= 0 then
+    if not OnScreen or Pos.Z <= 0 then
         return false
     end
 
-    local Center =
-        Vector2.new(
-            Camera.ViewportSize.X / 2,
-            Camera.ViewportSize.Y / 2
-        )
-
-    local TargetPosition =
-        Vector2.new(
-            ScreenPosition.X,
-            ScreenPosition.Y
-        )
+    local Center = Vector2.new(
+        Camera.ViewportSize.X / 2,
+        Camera.ViewportSize.Y / 2
+    )
 
     return (
-        TargetPosition - Center
+        Vector2.new(Pos.X, Pos.Y) - Center
     ).Magnitude <= FovRadius
-
 end
-
 
 -- =========================================================
--- 14 | ESP
+-- 13 | ESP
 -- =========================================================
 
-local ESPName =
-    "XDHub_WhiteESP"
+local ESPName = "XDHub_WhiteESP"
 
+local function RemoveESP(Char)
 
-local function RemoveESP(Character)
-
-    if not Character then
+    if not Char then
         return
     end
 
-    local Old =
-        Character:FindFirstChild(
-            ESPName
-        )
+    local HL = Char:FindFirstChild(ESPName)
 
-    if Old then
-        Old:Destroy()
+    if HL then
+        HL:Destroy()
     end
-
 end
 
+local function ApplyESP(Char)
 
-local function ApplyESP(Character)
-
-    if not ESPEnabled then
+    if not ESPEnabled
+        or not Char
+        or not Char.Parent
+    then
         return
     end
 
-    if not Character
-    or not Character.Parent then
-        return
-    end
+    local HL =
+        Char:FindFirstChild(ESPName)
+        or Instance.new("Highlight")
 
-    local Highlight =
-        Character:FindFirstChild(
-            ESPName
-        )
+    HL.Name = ESPName
+    HL.Parent = Char
+    HL.Adornee = Char
 
-    if not Highlight then
+    HL.FillTransparency = 0.5
+    HL.OutlineTransparency = 0
+    HL.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 
-        Highlight =
-            Instance.new("Highlight")
-
-        Highlight.Name =
-            ESPName
-
-        Highlight.Adornee =
-            Character
-
-        Highlight.FillTransparency =
-            0.5
-
-        Highlight.OutlineTransparency =
-            0
-
-        Highlight.DepthMode =
-            Enum.HighlightDepthMode.AlwaysOnTop
-
-        Highlight.Parent =
-            Character
-
-    end
-
-    Highlight.FillColor =
-        ESPColor
-
-    Highlight.OutlineColor =
-        ESPColor
-
+    HL.FillColor = ESPColor
+    HL.OutlineColor = ESPColor
 end
 
+local function SetupESPPlayer(tp)
+
+    if tp == Player then
+        return
+    end
+
+    tp.CharacterAdded:Connect(function(Char)
+
+        task.wait(0.5)
+
+        if ESPEnabled then
+            ApplyESP(Char)
+        end
+    end)
+
+    if tp.Character and ESPEnabled then
+        ApplyESP(tp.Character)
+    end
+end
 
 local function ToggleAllESP(State)
 
     ESPEnabled = State
 
-    for _,TargetPlayer in ipairs(
-        Players:GetPlayers()
-    ) do
+    for _, tp in ipairs(Players:GetPlayers()) do
 
-        if TargetPlayer ~= Player
-        and TargetPlayer.Character then
+        if tp ~= Player and tp.Character then
 
             if State then
-                ApplyESP(
-                    TargetPlayer.Character
-                )
+                ApplyESP(tp.Character)
             else
-                RemoveESP(
-                    TargetPlayer.Character
-                )
+                RemoveESP(tp.Character)
             end
-
         end
-
     end
-
 end
 
-
-local function UpdateESPColor()
-
-    if not ESPEnabled then
-        return
-    end
-
-    for _,TargetPlayer in ipairs(
-        Players:GetPlayers()
-    ) do
-
-        if TargetPlayer ~= Player
-        and TargetPlayer.Character then
-
-            local Highlight =
-                TargetPlayer.Character:
-                FindFirstChild(
-                    ESPName
-                )
-
-            if Highlight
-            and Highlight:IsA("Highlight") then
-
-                Highlight.FillColor =
-                    ESPColor
-
-                Highlight.OutlineColor =
-                    ESPColor
-
-            end
-
-        end
-
-    end
-
+for _, tp in ipairs(Players:GetPlayers()) do
+    SetupESPPlayer(tp)
 end
-
-
-local function SetupESPPlayer(TargetPlayer)
-
-    if TargetPlayer == Player then
-        return
-    end
-
-    TargetPlayer.CharacterAdded:Connect(
-        function(Character)
-
-            task.wait(0.5)
-
-            if ESPEnabled then
-                ApplyESP(Character)
-            end
-
-        end
-    )
-
-    if TargetPlayer.Character
-    and ESPEnabled then
-
-        ApplyESP(
-            TargetPlayer.Character
-        )
-
-    end
-
-end
-
-
-for _,TargetPlayer in ipairs(
-    Players:GetPlayers()
-) do
-
-    SetupESPPlayer(
-        TargetPlayer
-    )
-
-end
-
 
 -- =========================================================
--- 15 | NOCLIP
+-- 14 | NOCLIP
 -- =========================================================
 
 local function SaveNoclipParts()
 
     NoclipParts = {}
 
-    local Character =
-        GetCharacter()
+    local Char = GetCharacter()
 
-    if not Character then
+    if not Char then
         return
     end
 
-    for _,Object in ipairs(
-        Character:GetDescendants()
-    ) do
+    for _, obj in ipairs(Char:GetDescendants()) do
 
-        if Object:IsA("BasePart") then
-
-            NoclipParts[Object] =
-                Object.CanCollide
-
+        if obj:IsA("BasePart") then
+            NoclipParts[obj] = obj.CanCollide
         end
-
     end
-
 end
-
 
 local function RestoreNoclip()
 
-    for Part,OriginalValue in pairs(
-        NoclipParts
-    ) do
+    for Part, Original in pairs(NoclipParts) do
 
-        if Part
-        and Part.Parent then
-
-            Part.CanCollide =
-                OriginalValue
-
+        if Part and Part.Parent then
+            Part.CanCollide = Original
         end
-
     end
 
     NoclipParts = {}
-
 end
-
 
 local function SetNoclip(State)
 
@@ -1015,45 +631,10 @@ local function SetNoclip(State)
     else
         RestoreNoclip()
     end
-
 end
-
-
-local function UpdateNoclip()
-
-    if not NoclipEnabled then
-        return
-    end
-
-    local Character =
-        GetCharacter()
-
-    if not Character then
-        return
-    end
-
-    for _,Object in ipairs(
-        Character:GetDescendants()
-    ) do
-
-        if Object:IsA("BasePart") then
-
-            if NoclipParts[Object] == nil then
-                NoclipParts[Object] =
-                    Object.CanCollide
-            end
-
-            Object.CanCollide = false
-
-        end
-
-    end
-
-end
-
 
 -- =========================================================
--- 16 | HITBOX
+-- 15 | HITBOX
 -- =========================================================
 
 local function SaveHitbox(HRP)
@@ -1062,90 +643,17 @@ local function SaveHitbox(HRP)
         return
     end
 
-    if HitboxOriginalValues[HRP] then
-        return
+    if not HitboxOriginalValues[HRP] then
+
+        HitboxOriginalValues[HRP] = {
+            Size = HRP.Size,
+            Transparency = HRP.Transparency,
+            Material = HRP.Material,
+            Color = HRP.Color,
+            CanCollide = HRP.CanCollide
+        }
     end
-
-    HitboxOriginalValues[HRP] = {
-
-        Size =
-            HRP.Size,
-
-        Transparency =
-            HRP.Transparency,
-
-        Material =
-            HRP.Material,
-
-        Color =
-            HRP.Color,
-
-        CanCollide =
-            HRP.CanCollide
-
-    }
-
 end
-
-
-local function RestoreHitbox(HRP)
-
-    local Data =
-        HitboxOriginalValues[HRP]
-
-    if not Data then
-        return
-    end
-
-    if HRP
-    and HRP.Parent then
-
-        pcall(function()
-            HRP.Size =
-                Data.Size
-        end)
-
-        pcall(function()
-            HRP.Transparency =
-                Data.Transparency
-        end)
-
-        pcall(function()
-            HRP.Material =
-                Data.Material
-        end)
-
-        pcall(function()
-            HRP.Color =
-                Data.Color
-        end)
-
-        pcall(function()
-            HRP.CanCollide =
-                Data.CanCollide
-        end)
-
-    end
-
-    HitboxOriginalValues[HRP] = nil
-
-end
-
-
-local function RestoreAllHitboxes()
-
-    for HRP in pairs(
-        HitboxOriginalValues
-    ) do
-
-        RestoreHitbox(HRP)
-
-    end
-
-    HitboxOriginalValues = {}
-
-end
-
 
 local function UpdateHitboxes()
 
@@ -1153,97 +661,64 @@ local function UpdateHitboxes()
         return
     end
 
-    local DesiredSize =
+    local Size =
         Vector3.new(
             HitboxSize,
             HitboxSize,
             HitboxSize
         )
 
-    for _,TargetPlayer in ipairs(
-        Players:GetPlayers()
-    ) do
+    for _, tp in ipairs(Players:GetPlayers()) do
 
-        if TargetPlayer ~= Player
-        and TargetPlayer.Character then
-
-            local Character =
-                TargetPlayer.Character
+        if tp ~= Player and tp.Character then
 
             local HRP =
-                Character:FindFirstChild(
-                    "HumanoidRootPart"
-                )
+                tp.Character:FindFirstChild("HumanoidRootPart")
 
-            local Humanoid =
-                GetHumanoid(Character)
+            local Hum =
+                GetHumanoid(tp.Character)
 
-            if HRP
-            and Humanoid
-            and Humanoid.Health > 0 then
+            if HRP and Hum and Hum.Health > 0 then
 
                 SaveHitbox(HRP)
 
                 pcall(function()
 
-                    HRP.Size =
-                        DesiredSize
-
-                    HRP.Transparency =
-                        0.7
-
-                    HRP.Color =
-                        HitboxColor
-
-                    HRP.Material =
-                        Enum.Material.Neon
-
-                    HRP.CanCollide =
-                        false
+                    HRP.Size = Size
+                    HRP.Transparency = 0.7
+                    HRP.Color = HitboxColor
+                    HRP.Material = Enum.Material.Neon
+                    HRP.CanCollide = false
 
                 end)
-
             end
-
         end
-
     end
-
 end
 
+local function RestoreAllHitboxes()
 
-local function UpdateHitboxColor()
+    for HRP, Data in pairs(HitboxOriginalValues) do
 
-    if not HitboxEnabled then
-        return
-    end
-
-    for HRP in pairs(
-        HitboxOriginalValues
-    ) do
-
-        if HRP
-        and HRP.Parent then
+        if HRP and HRP.Parent then
 
             pcall(function()
 
-                HRP.Color =
-                    HitboxColor
-
-                HRP.Material =
-                    Enum.Material.Neon
+                HRP.Size = Data.Size
+                HRP.Transparency = Data.Transparency
+                HRP.Material = Data.Material
+                HRP.Color = Data.Color
+                HRP.CanCollide = Data.CanCollide
 
             end)
-
         end
-
     end
 
+    HitboxOriginalValues = {}
 end
 
-
 -- =========================================================
--- 17 | FULLBRIGHT
+-- 16 | FULLBRIGHT
 -- =========================================================
 
 local function SaveOriginalLighting()
@@ -1253,23 +728,12 @@ local function SaveOriginalLighting()
     end
 
     OriginalLighting = {
-
-        Brightness =
-            Lighting.Brightness,
-
-        ClockTime =
-            Lighting.ClockTime,
-
-        FogEnd =
-            Lighting.FogEnd,
-
-        GlobalShadows =
-            Lighting.GlobalShadows
-
+        Brightness = Lighting.Brightness,
+        ClockTime = Lighting.ClockTime,
+        FogEnd = Lighting.FogEnd,
+        GlobalShadows = Lighting.GlobalShadows
     }
-
 end
-
 
 local function Bright()
 
@@ -1284,48 +748,26 @@ local function Bright()
     Lighting.FogEnd = 100000
     Lighting.GlobalShadows = false
 
-    if not BrightVision
-    or not BrightVision.Parent then
+    if not BrightVision then
 
         BrightVision =
-            Instance.new(
-                "ColorCorrectionEffect"
-            )
+            Instance.new("ColorCorrectionEffect")
 
-        BrightVision.Name =
-            "XDHub_BrightVision"
-
-        BrightVision.Parent =
-            Lighting
-
+        BrightVision.Name = "XDHub_BrightVision"
+        BrightVision.Brightness = 0.25
+        BrightVision.Parent = Lighting
     end
-
-    BrightVision.Brightness =
-        0.25
-
-    BrightVision.Contrast =
-        0
-
-    BrightVision.Saturation =
-        0
-
 end
-
 
 local function RemoveBright()
 
     if BrightVision then
 
         pcall(function()
-
-            if BrightVision.Parent then
-                BrightVision:Destroy()
-            end
-
+            BrightVision:Destroy()
         end)
 
         BrightVision = nil
-
     end
 
     if OriginalLighting then
@@ -1343,107 +785,89 @@ local function RemoveBright()
             OriginalLighting.GlobalShadows
 
         OriginalLighting = nil
-
     end
-
 end
 
-
 -- =========================================================
--- 18 | INSTANT INTERACTION
+-- 17 | INSTANT INTERACTION
 -- =========================================================
 
 local function SavePrompt(Prompt)
 
-    if PromptOriginalValues[Prompt] then
+    if not Prompt then
         return
     end
 
-    PromptOriginalValues[Prompt] =
-        Prompt.HoldDuration
-
+    if not PromptOriginalValues[Prompt] then
+        PromptOriginalValues[Prompt] = Prompt.HoldDuration
+    end
 end
-
 
 local function RestorePrompts()
-
-    for Prompt,Value in pairs(
-        PromptOriginalValues
-    ) do
-
-        if Prompt
-        and Prompt.Parent then
-
-            pcall(function()
-                Prompt.HoldDuration = Value
-            end)
-
-        end
-
-    end
-
-    PromptOriginalValues = {}
-
-end
-
-
-local function ToggleInstantInteraction(State)
-
-    InstantInteractionEnabled =
-        State
 
     if PromptConnection then
 
         PromptConnection:Disconnect()
         PromptConnection = nil
+    end
 
+    for Prompt, OriginalValue in pairs(PromptOriginalValues) do
+
+        if Prompt and Prompt.Parent then
+
+            pcall(function()
+                Prompt.HoldDuration = OriginalValue
+            end)
+        end
+    end
+
+    PromptOriginalValues = {}
+end
+
+local function ToggleInstantInteraction(State)
+
+    InstantInteractionEnabled = State
+
+    if PromptConnection then
+        PromptConnection:Disconnect()
+        PromptConnection = nil
     end
 
     if not State then
-
         RestorePrompts()
         return
-
     end
 
-    for _,Prompt in ipairs(
-        workspace:GetDescendants()
-    ) do
+    for _, Prompt in ipairs(workspace:GetDescendants()) do
 
         if Prompt:IsA("ProximityPrompt") then
 
             SavePrompt(Prompt)
 
-            Prompt.HoldDuration = 0
-
+            pcall(function()
+                Prompt.HoldDuration = 0
+            end)
         end
-
     end
 
     PromptConnection =
-        workspace.DescendantAdded:Connect(
-            function(Object)
+        workspace.DescendantAdded:Connect(function(obj)
 
-                if not InstantInteractionEnabled then
-                    return
-                end
+            if InstantInteractionEnabled
+                and obj:IsA("ProximityPrompt")
+            then
 
-                if Object:IsA("ProximityPrompt") then
+                SavePrompt(obj)
 
-                    SavePrompt(Object)
-
-                    Object.HoldDuration = 0
-
-                end
-
+                pcall(function()
+                    obj.HoldDuration = 0
+                end)
             end
-        )
-
+        end)
 end
 
-
 -- =========================================================
--- 19 | UNLOCK CAMERA
+-- 18 | UNLOCK CAMERA
 -- =========================================================
 
 local function ToggleUnlockCam(State)
@@ -1465,9 +889,7 @@ local function ToggleUnlockCam(State)
 
                 OriginalCameraSubject =
                     Camera.CameraSubject
-
             end
-
         end
 
         UnlockCamEnabled = true
@@ -1483,73 +905,52 @@ local function ToggleUnlockCam(State)
             Camera.CameraType =
                 Enum.CameraType.Custom
 
-            local Character =
-                Player.Character
-
             local Head =
-                Character
-                and Character:FindFirstChild(
-                    "Head"
-                )
+                GetCharacter()
+                and GetCharacter():FindFirstChild("Head")
 
             if Head then
-
-                Camera.CameraSubject =
-                    Head
-
+                Camera.CameraSubject = Head
             end
-
         end
 
     else
 
         UnlockCamEnabled = false
 
-        if OriginalCameraMode ~= nil then
-
-            Player.CameraMode =
-                OriginalCameraMode
-
+        if OriginalCameraMode then
+            Player.CameraMode = OriginalCameraMode
         end
 
-        if OriginalDevCamOcclusion ~= nil then
-
+        if OriginalDevCamOcclusion then
             Player.DevCameraOcclusionMode =
                 OriginalDevCamOcclusion
-
         end
 
         if Camera then
 
-            if OriginalCameraType ~= nil then
-
+            if OriginalCameraType then
                 Camera.CameraType =
                     OriginalCameraType
-
             end
 
-            if OriginalCameraSubject ~= nil
-            and OriginalCameraSubject.Parent then
-
+            if OriginalCameraSubject
+                and OriginalCameraSubject.Parent
+            then
                 Camera.CameraSubject =
                     OriginalCameraSubject
-
             end
-
         end
 
         OriginalCameraMode = nil
         OriginalDevCamOcclusion = nil
         OriginalCameraType = nil
         OriginalCameraSubject = nil
-
     end
-
 end
 
-
 -- =========================================================
--- 20 | BANG
+-- 19 | BANG
 -- =========================================================
 
 local function StopBang()
@@ -1560,24 +961,18 @@ local function StopBang()
 
         BangConnection:Disconnect()
         BangConnection = nil
-
     end
 
     if BangAnimation then
 
         pcall(function()
-
             BangAnimation:Stop()
             BangAnimation:Destroy()
-
         end)
 
         BangAnimation = nil
-
     end
-
 end
-
 
 local function StartBang()
 
@@ -1585,62 +980,23 @@ local function StartBang()
         return false
     end
 
-    local TargetPlayer =
-        Players:FindFirstChild(
-            SelectedBangPlayer
-        )
+    local Target =
+        Players:FindFirstChild(SelectedBangPlayer)
 
-    if not TargetPlayer then
+    if not Target or not Target.Character then
         return false
     end
 
-    local Character =
-        Player.Character
+    local Char = GetCharacter()
+    local Hum = GetHumanoid(Char)
+    local Root = GetRoot(Char)
+    local TargetRoot = GetRoot(Target.Character)
 
-    if not Character then
+    if not Hum or not Root or not TargetRoot then
         return false
     end
 
-    local Humanoid =
-        GetHumanoid(Character)
-
-    local Root =
-        GetRoot(Character)
-
-    if not Humanoid
-    or not Root then
-        return false
-    end
-
-    local TargetCharacter =
-        TargetPlayer.Character
-
-    if not TargetCharacter then
-        return false
-    end
-
-    local TargetRoot =
-        GetRoot(TargetCharacter)
-
-    if not TargetRoot then
-        return false
-    end
-
-    if BangConnection then
-        BangConnection:Disconnect()
-        BangConnection = nil
-    end
-
-    if BangAnimation then
-
-        pcall(function()
-            BangAnimation:Stop()
-            BangAnimation:Destroy()
-        end)
-
-        BangAnimation = nil
-
-    end
+    StopBang()
 
     local Animation =
         Instance.new("Animation")
@@ -1648,21 +1004,16 @@ local function StartBang()
     Animation.AnimationId =
         "rbxassetid://148840371"
 
-    local Success,Track =
+    local Success, Track =
         pcall(function()
-
-            return Humanoid:LoadAnimation(
-                Animation
-            )
-
+            return Hum:LoadAnimation(Animation)
         end)
 
-    if not Success
-    or not Track then
+    if not Success or not Track then
 
         Animation:Destroy()
-        return false
 
+        return false
     end
 
     BangAnimation = Track
@@ -1673,64 +1024,35 @@ local function StartBang()
     BangEnabled = true
 
     BangConnection =
-        RunService.Heartbeat:Connect(
-            function()
+        RunService.Heartbeat:Connect(function()
 
-                if not BangEnabled then
-                    return
-                end
-
-                if not TargetPlayer.Parent then
-
-                    StopBang()
-                    return
-
-                end
-
-                local CurrentCharacter =
-                    Player.Character
-
-                local CurrentTargetCharacter =
-                    TargetPlayer.Character
-
-                if not CurrentCharacter
-                or not CurrentTargetCharacter then
-                    return
-                end
-
-                local CurrentRoot =
-                    GetRoot(
-                        CurrentCharacter
-                    )
-
-                local CurrentTargetRoot =
-                    GetRoot(
-                        CurrentTargetCharacter
-                    )
-
-                if CurrentRoot
-                and CurrentTargetRoot then
-
-                    CurrentRoot.CFrame =
-                        CurrentTargetRoot.CFrame
-                        * CFrame.new(
-                            0,
-                            0,
-                            BackDistance
-                        )
-
-                end
-
+            if not BangEnabled
+                or not Target.Parent
+                or not Target.Character
+            then
+                StopBang()
+                return
             end
-        )
+
+            local CurrentRoot =
+                GetRoot(GetCharacter())
+
+            local CurrentTargetRoot =
+                GetRoot(Target.Character)
+
+            if CurrentRoot and CurrentTargetRoot then
+
+                CurrentRoot.CFrame =
+                    CurrentTargetRoot.CFrame
+                    * CFrame.new(0, 0, BackDistance)
+            end
+        end)
 
     return true
-
 end
 
-
 -- =========================================================
--- 21 | TELEPORT TOOL
+-- 20 | TELEPORT TOOL
 -- =========================================================
 
 local function RemoveCreatedTeleportTool()
@@ -1738,404 +1060,106 @@ local function RemoveCreatedTeleportTool()
     if CreatedTeleportTool then
 
         pcall(function()
-
-            if CreatedTeleportTool.Parent then
-                CreatedTeleportTool:Destroy()
-            end
-
+            CreatedTeleportTool:Destroy()
         end)
 
         CreatedTeleportTool = nil
-
     end
-
 end
-
 
 local function CreateTeleportTool()
 
     local Backpack =
-        Player:FindFirstChildOfClass(
-            "Backpack"
-        )
+        Player:FindFirstChildOfClass("Backpack")
 
     if not Backpack then
-        return nil
+        return
     end
 
-    local Existing =
-        Backpack:FindFirstChild(
-            "Teleport"
-        )
-
-    if Existing
-    and Existing:IsA("Tool") then
-
-        CreatedTeleportTool =
-            Existing
+    if Backpack:FindFirstChild("Teleport")
+        or (Player.Character and Player.Character:FindFirstChild("Teleport"))
+    then
 
         WindUI:Notify({
-
             Title = "Teleport Tool",
-            Content =
-                "มีไอเท็ม Teleport อยู่แล้ว",
+            Content = "มีไอเท็ม Teleport อยู่แล้ว",
             Duration = 2
-
         })
 
-        return Existing
-
+        return
     end
 
-    local Mouse =
-        Player:GetMouse()
+    local Mouse = Player:GetMouse()
 
-    local Tool =
-        Instance.new("Tool")
+    local Tool = Instance.new("Tool")
 
-    Tool.Name =
-        "Teleport"
+    Tool.Name = "Teleport"
+    Tool.RequiresHandle = false
+    Tool.CanBeDropped = false
 
-    Tool.RequiresHandle =
-        false
+    Tool.Activated:Connect(function()
 
-    Tool.CanBeDropped =
-        false
-
-    Tool.Activated:Connect(
-        function()
-
-            if not Mouse.Hit then
-                return
-            end
-
-            local Character =
-                Player.Character
-
-            if not Character then
-                return
-            end
+        if Mouse.Hit then
 
             local Root =
-                GetRoot(Character)
+                GetRoot(GetCharacter())
 
-            if not Root then
-                return
-            end
+            if Root then
 
-            Root.CFrame =
-                CFrame.new(
-                    Mouse.Hit.Position
-                    + Vector3.new(
-                        0,
-                        2.5,
-                        0
+                Root.CFrame =
+                    CFrame.new(
+                        Mouse.Hit.Position
+                        + Vector3.new(0, 2.5, 0)
                     )
-                )
-
+            end
         end
-    )
+    end)
 
-    Tool.Parent =
-        Backpack
+    Tool.Parent = Backpack
 
-    CreatedTeleportTool =
-        Tool
+    CreatedTeleportTool = Tool
 
     WindUI:Notify({
-
         Title = "Teleport Tool",
-        Content =
-            "สร้างไอเท็ม Teleport แล้ว",
+        Content = "สร้างไอเท็ม Teleport แล้ว",
         Duration = 2
-
     })
-
-    return Tool
-
 end
 
-
 -- =========================================================
--- 22 | DISABLE ALL
--- =========================================================
-
-local function DisableAllFeatures()
-
-    DisableAllInProgress = true
-
-    -- SPEED
-    SpeedEnabled = false
-
-    local Character =
-        Player.Character
-
-    local Humanoid =
-        GetHumanoid(Character)
-
-    if Humanoid
-    and OriginalWalkSpeed ~= nil then
-
-        Humanoid.WalkSpeed =
-            OriginalWalkSpeed
-
-    end
-
-    OriginalWalkSpeed = nil
-
-
-    -- JUMP
-    JumpEnabled = false
-
-    if Humanoid then
-
-        if Humanoid.UseJumpPower then
-
-            if OriginalJumpPower ~= nil then
-
-                Humanoid.JumpPower =
-                    OriginalJumpPower
-
-            end
-
-        else
-
-            if OriginalJumpHeight ~= nil then
-
-                Humanoid.JumpHeight =
-                    OriginalJumpHeight
-
-            end
-
-        end
-
-    end
-
-    OriginalJumpPower = nil
-    OriginalJumpHeight = nil
-
-
-    -- INFINITE JUMP
-    InfiniteJumpEnabled = false
-
-    if Character then
-        ApplyInfiniteJump(
-            Character
-        )
-    end
-
-
-    -- NOCLIP
-    NoclipEnabled = false
-    RestoreNoclip()
-
-
-    -- AIMBOT
-    TargetLockEnabled = false
-    AimbotTarget = nil
-
-    ShowFovCircle = false
-
-    if FovCircle then
-        FovCircle.Visible = false
-    end
-
-
-    -- ESP
-    ToggleAllESP(false)
-
-
-    -- HITBOX
-    HitboxEnabled = false
-    RestoreAllHitboxes()
-
-
-    -- FULLBRIGHT
-    FullbrightEnabled = false
-    RemoveBright()
-
-
-    -- INSTANT INTERACTION
-    InstantInteractionEnabled = false
-
-    if PromptConnection then
-
-        PromptConnection:Disconnect()
-        PromptConnection = nil
-
-    end
-
-    RestorePrompts()
-
-
-    -- CAMERA
-    ToggleUnlockCam(false)
-
-
-    -- BANG
-    StopBang()
-
-
-    -- RESET POSITION
-    ResetStayPositionEnabled = false
-    SavedResetPosition = nil
-
-
-    -- TELEPORT TOOL
-    RemoveCreatedTeleportTool()
-
-
-    -- RESET UI
-    SetToggleUI(
-        SpeedToggle,
-        false
-    )
-
-    SetToggleUI(
-        JumpToggle,
-        false
-    )
-
-    SetToggleUI(
-        InfiniteJumpToggle,
-        false
-    )
-
-    SetToggleUI(
-        NoclipToggle,
-        false
-    )
-
-    SetToggleUI(
-        AimbotToggle,
-        false
-    )
-
-    SetToggleUI(
-        FovCircleToggle,
-        false
-    )
-
-    SetToggleUI(
-        ESPToggle,
-        false
-    )
-
-    SetToggleUI(
-        HitboxToggle,
-        false
-    )
-
-    SetToggleUI(
-        UnlockCamToggle,
-        false
-    )
-
-    SetToggleUI(
-        FullbrightToggle,
-        false
-    )
-
-    SetToggleUI(
-        InstantInteractionToggle,
-        false
-    )
-
-    SetToggleUI(
-        BangToggle,
-        false
-    )
-
-    SetToggleUI(
-        StayAfterResetToggle,
-        false
-    )
-
-
-    AimbotTarget = nil
-
-    DisableAllInProgress = false
-
-    WindUI:Notify({
-
-        Title = "XD Hub",
-
-        Content =
-            "ปิดฟังก์ชันทั้งหมดและคืนค่าปุ่มแล้ว",
-
-        Duration = 3
-
-    })
-
-end
-
-
--- =========================================================
--- 23 | WINDOW
+-- 21 | WINDUI WINDOW
 -- =========================================================
 
-local Window =
-    WindUI:CreateWindow({
+local Window = WindUI:CreateWindow({
+    Title = "XD Hub",
+    Icon = "cloud",
+    Author = "Mobile",
+    Folder = "XDHub",
+    Size = UDim2.fromOffset(320, 420),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = false,
 
-        Title = "XD Hub",
-
-        Icon = "cloud",
-
-        Author = "Mobile",
-
-        Folder = "XDHub",
-
-        Size =
-            UDim2.fromOffset(
-                320,
-                420
-            ),
-
-        Transparent = true,
-
-        Theme = "Dark",
-
-        Resizable = false,
-
-        User = {
-
-            Enabled = true,
-
-            Anonymous = false,
-
-            Callback = function()
-
-                print(
-                    "XD Hub Profile: "
-                    .. Player.DisplayName
-                )
-
-            end
-
-        }
-
-    })
-
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Callback = function() end
+    }
+})
 
 -- =========================================================
--- 24 | PLAYER TAB
+-- 22 | PLAYER TAB
 -- =========================================================
 
 local MainTab =
     Window:Tab({
-
         Title = "Player",
         Icon = "user"
-
     })
 
-
 MainTab:Button({
-
     Title = "Fly",
-
     Desc = "เปิดระบบบิน",
-
     Icon = "plane",
 
     Callback = function()
@@ -2143,68 +1167,35 @@ MainTab:Button({
         local Success, Error =
             pcall(function()
 
-                local Source =
-                    game:HttpGet(
-                        "https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"
-                    )
-
-                local Script =
-                    loadstring(Source)
-
-                if not Script then
-
-                    error(
-                        "โหลดสคริปต์บินไม่สำเร็จ"
-                    )
-
-                end
-
-                Script()
+                loadstring(game:HttpGet(
+                    "https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"
+                ))()
 
             end)
 
         WindUI:Notify({
-
-            Title =
-                Success
-                and "Fly"
-                or "Fly Error",
-
-            Content =
-                Success
+            Title = Success and "Fly" or "Fly Error",
+            Content = Success
                 and "เปิดเมนูบินแล้ว"
                 or tostring(Error),
 
             Duration = 3
-
         })
-
     end
-
 })
-
 
 MainTab:Divider()
 
-
 MainTab:Section({
-
     Title = "Movement",
-
     Icon = "move"
-
 })
-
 
 SpeedToggle =
     MainTab:Toggle({
-
         Title = "Speed",
-
         Desc = "เปิด / ปิด ความเร็ว",
-
         Icon = "gauge",
-
         Value = false,
 
         Callback = function(Value)
@@ -2213,59 +1204,39 @@ SpeedToggle =
                 return
             end
 
-            SpeedEnabled =
-                Value
+            SpeedEnabled = Value
 
             ApplySpeed()
-
         end
-
     })
 
-
 MainTab:Slider({
-
     Title = "Speed Value",
-
     Desc = "ปรับความเร็วตัวละคร",
-
     Step = 1,
 
     Value = {
-
         Min = 1,
-
         Max = 120,
-
         Default = 16
-
     },
 
     Callback = function(Value)
 
         SpeedValue =
-            tonumber(Value)
-            or 16
+            tonumber(Value) or 16
 
         if SpeedEnabled then
             ApplySpeed()
         end
-
     end
-
 })
-
 
 JumpToggle =
     MainTab:Toggle({
-
         Title = "Jump",
-
-        Desc =
-            "เปิด / ปิดการปรับแรงกระโดด",
-
+        Desc = "เปิด / ปิดการปรับแรงกระโดด",
         Icon = "arrow-up",
-
         Value = false,
 
         Callback = function(Value)
@@ -2274,59 +1245,39 @@ JumpToggle =
                 return
             end
 
-            JumpEnabled =
-                Value
+            JumpEnabled = Value
 
             ApplyJump()
-
         end
-
     })
 
-
 MainTab:Slider({
-
     Title = "Jump Power",
-
     Desc = "ปรับแรงกระโดด",
-
     Step = 1,
 
     Value = {
-
         Min = 1,
-
         Max = 120,
-
         Default = 50
-
     },
 
     Callback = function(Value)
 
         JumpValue =
-            tonumber(Value)
-            or 50
+            tonumber(Value) or 50
 
         if JumpEnabled then
             ApplyJump()
         end
-
     end
-
 })
-
 
 InfiniteJumpToggle =
     MainTab:Toggle({
-
         Title = "Infinite Jump",
-
-        Desc =
-            "กระโดดกลางอากาศ + ป้องกันการรีเซ็ต",
-
+        Desc = "กระโดดกลางอากาศ + ป้องกันการรีเซ็ต",
         Icon = "infinity",
-
         Value = false,
 
         Callback = function(Value)
@@ -2335,31 +1286,19 @@ InfiniteJumpToggle =
                 return
             end
 
-            InfiniteJumpEnabled =
-                Value
+            InfiniteJumpEnabled = Value
 
             if Player.Character then
-
-                ApplyInfiniteJump(
-                    Player.Character
-                )
-
+                ApplyInfiniteJump(Player.Character)
             end
-
         end
-
     })
-
 
 NoclipToggle =
     MainTab:Toggle({
-
         Title = "Noclip",
-
         Desc = "ทะลุสิ่งกีดขวาง",
-
         Icon = "ghost",
-
         Value = false,
 
         Callback = function(Value)
@@ -2369,45 +1308,29 @@ NoclipToggle =
             end
 
             SetNoclip(Value)
-
         end
-
     })
 
-
 -- =========================================================
--- 25 | AIMBOT TAB
+-- 23 | AIMBOT TAB
 -- =========================================================
 
 local CombatTab =
     Window:Tab({
-
         Title = "Aimbot",
-
         Icon = "crosshair"
-
     })
 
-
 CombatTab:Section({
-
     Title = "Target Settings",
-
     Icon = "crosshair"
-
 })
-
 
 AimbotToggle =
     CombatTab:Toggle({
-
         Title = "Aimbot",
-
-        Desc =
-            "ล็อคเป้าหมายด้านหน้าใน FOV",
-
+        Desc = "ล็อคเป้าหมายด้านหน้าใน FOV",
         Icon = "crosshair",
-
         Value = false,
 
         Callback = function(Value)
@@ -2416,145 +1339,85 @@ AimbotToggle =
                 return
             end
 
-            TargetLockEnabled =
-                Value
+            TargetLockEnabled = Value
 
             if not Value then
                 AimbotTarget = nil
             end
-
         end
-
     })
 
-
 CombatTab:Dropdown({
-
     Title = "Target Part",
-
-    Desc =
-        "เลือกส่วนของตัวละครที่จะล็อค",
-
+    Desc = "เลือกส่วน",
     Icon = "scan",
 
     Values = {
-
         "Head",
-
         "HumanoidRootPart"
-
     },
 
     Value = "Head",
-
     AllowNone = false,
 
     Callback = function(Value)
 
-        local Selected =
-            Value
+        TargetPart =
+            type(Value) == "table"
+            and (Value[1] or Value.Title)
+            or Value
 
-        if type(Value) == "table" then
-
-            Selected =
-                Value[1]
-                or Value.Title
-
-        end
-
-        if Selected == "Head"
-        or Selected == "HumanoidRootPart" then
-
-            TargetPart =
-                Selected
-
-            AimbotTarget = nil
-
-        end
-
+        AimbotTarget = nil
     end
-
 })
 
-
 CombatTab:Slider({
-
     Title = "Smoothness",
-
-    Desc =
-        "ปรับความนุ่มในการล็อคเป้า",
-
+    Desc = "ความนุ่ม",
     Icon = "activity",
-
     Step = 1,
 
     Value = {
-
         Min = 1,
-
         Max = 20,
-
         Default = 5
-
     },
 
     Callback = function(Value)
 
         AimSmoothness =
             math.clamp(
-                tonumber(Value)
-                or 5,
+                tonumber(Value) or 5,
                 1,
                 20
             )
-
     end
-
 })
 
-
 CombatTab:Slider({
-
     Title = "FOV Size",
-
-    Desc =
-        "ปรับขนาดพื้นที่ล็อคเป้า",
-
+    Desc = "ขนาด FOV",
     Icon = "circle",
-
     Step = 1,
 
     Value = {
-
         Min = 50,
-
         Max = 200,
-
         Default = 100
-
     },
 
     Callback = function(Value)
 
         FovRadius =
-            tonumber(Value)
-            or 100
-
+            tonumber(Value) or 100
     end
-
 })
-
 
 FovCircleToggle =
     CombatTab:Toggle({
-
         Title = "FOV Circle",
-
-        Desc =
-            "แสดง / ซ่อนวงพื้นที่ล็อค",
-
+        Desc = "แสดงวง FOV",
         Icon = "circle-dashed",
-
         Value = false,
 
         Callback = function(Value)
@@ -2563,75 +1426,40 @@ FovCircleToggle =
                 return
             end
 
-            ShowFovCircle =
-                Value
+            ShowFovCircle = Value
 
             if FovCircle then
-
-                FovCircle.Visible =
-                    Value
-
+                FovCircle.Visible = Value
             end
-
         end
-
     })
 
-
 CombatTab:Colorpicker({
-
     Title = "Lock Color",
-
-    Desc =
-        "เปลี่ยนสีวง FOV",
-
+    Desc = "สีวง FOV",
     Icon = "palette",
-
-    Default =
-        Color3.fromRGB(
-            255,
-            255,
-            255
-        ),
-
-    Flag = "LockColor",
+    Default = Color3.fromRGB(255, 255, 255),
 
     Callback = function(Color)
 
-        LockColor =
-            Color
+        LockColor = Color
 
         if FovCircle then
-
-            FovCircle.Color =
-                Color
-
+            FovCircle.Color = Color
         end
-
     end
-
 })
-
 
 CombatTab:Section({
-
     Title = "ESP Settings",
-
     Icon = "eye"
-
 })
-
 
 ESPToggle =
     CombatTab:Toggle({
-
         Title = "Player ESP",
-
-        Desc =
-            "แสดงกรอบรอบผู้เล่น",
-
+        Desc = "แสดงกรอบผู้เล่น",
         Icon = "scan-eye",
-
         Value = false,
 
         Callback = function(Value)
@@ -2641,59 +1469,35 @@ ESPToggle =
             end
 
             ToggleAllESP(Value)
-
         end
-
     })
 
-
 CombatTab:Colorpicker({
-
     Title = "ESP Color",
-
-    Desc =
-        "เปลี่ยนสีกรอบผู้เล่น",
-
+    Desc = "สีกรอบ",
     Icon = "palette",
-
-    Default =
-        ESPColor,
-
-    Flag = "ESPColor",
+    Default = ESPColor,
 
     Callback = function(Color)
 
-        ESPColor =
-            Color
+        ESPColor = Color
 
-        UpdateESPColor()
-
+        if ESPEnabled then
+            ToggleAllESP(true)
+        end
     end
-
 })
-
 
 CombatTab:Divider()
 
-
 CombatTab:Section({
-
     Title = "Hitbox Settings",
-
     Icon = "maximize"
-
 })
 
-
 CombatTab:Input({
-
     Title = "Hitbox Size",
-
-    Desc =
-        "กำหนดขนาด Hitbox",
-
-    Icon = "maximize",
-
+    Desc = "ขนาด Hitbox",
     Placeholder = "10",
 
     Callback = function(Value)
@@ -2709,50 +1513,27 @@ CombatTab:Input({
                     2,
                     50
                 )
-
         end
-
     end
-
 })
 
-
 CombatTab:Colorpicker({
-
     Title = "Hitbox Color",
-
-    Desc =
-        "เปลี่ยนสี Hitbox",
-
+    Desc = "สี Hitbox",
     Icon = "palette",
-
-    Default =
-        HitboxColor,
-
-    Flag = "HitboxColor",
+    Default = HitboxColor,
 
     Callback = function(Color)
 
-        HitboxColor =
-            Color
-
-        UpdateHitboxColor()
-
+        HitboxColor = Color
     end
-
 })
-
 
 HitboxToggle =
     CombatTab:Toggle({
-
         Title = "Enable Hitbox",
-
-        Desc =
-            "เปิด / ปิด Hitbox",
-
+        Desc = "เปิด / ปิด Hitbox",
         Icon = "expand",
-
         Value = false,
 
         Callback = function(Value)
@@ -2761,682 +1542,325 @@ HitboxToggle =
                 return
             end
 
-            HitboxEnabled =
-                Value
+            HitboxEnabled = Value
 
             if Value then
-
                 UpdateHitboxes()
-
             else
-
                 RestoreAllHitboxes()
-
             end
-
         end
-
     })
 
-
 -- =========================================================
--- 26 | TELEPORT TAB
+-- 24 | TELEPORT TAB
 -- =========================================================
 
 local WarpTab =
     Window:Tab({
-
         Title = "Teleport",
-
         Icon = "map-pin"
-
     })
 
-
 WarpTab:Section({
-
     Title = "Teleport",
-
     Icon = "navigation"
-
 })
-
 
 local SelectedWarpPlayer = nil
 local WarpDropdown = nil
-
 
 local function GetWarpPlayers()
 
     local List = {}
 
-    for _,TargetPlayer in ipairs(
-        Players:GetPlayers()
-    ) do
+    for _, tp in ipairs(Players:GetPlayers()) do
 
-        if TargetPlayer ~= Player then
+        if tp ~= Player then
 
-            table.insert(
-                List,
-                {
-
-                    Title =
-                        TargetPlayer.Name,
-
-                    Desc =
-                        TargetPlayer.DisplayName,
-
-                    Icon =
-                        GetAvatar(
-                            TargetPlayer
-                        ),
-
-                    IconSize = 28
-
-                }
-            )
-
+            table.insert(List, {
+                Title = tp.Name,
+                Desc = tp.DisplayName,
+                Icon = GetAvatar(tp),
+                IconSize = 28
+            })
         end
-
     end
 
     table.sort(
         List,
-        function(A,B)
-
-            return A.Title:lower()
-                < B.Title:lower()
-
+        function(A, B)
+            return A.Title:lower() < B.Title:lower()
         end
     )
 
     return List
-
 end
 
-
-local function GetWarpTarget()
-
-    if not SelectedWarpPlayer
-    or SelectedWarpPlayer == ""
-    or SelectedWarpPlayer == "ไม่มีผู้เล่น" then
-
-        return nil
-    end
-
-    return Players:FindFirstChild(
-        SelectedWarpPlayer
-    )
-
-end
-
-
-local function GetDropdownName(Value)
-
-    local Name = nil
-
-    if type(Value) == "table" then
-
-        if Value.Title then
-
-            Name =
-                Value.Title
-
-        elseif Value[1] then
-
-            if type(Value[1]) == "table" then
-
-                Name =
-                    Value[1].Title
-
-            else
-
-                Name =
-                    Value[1]
-
-            end
-
-        end
-
-    elseif type(Value) == "string" then
-
-        Name =
-            Value
-
-    end
-
-    return Name
-
-end
-
-
-local InitialWarpPlayers =
+local InitialWarp =
     GetWarpPlayers()
 
-local InitialWarpValue =
-    InitialWarpPlayers[1]
-    or {
-
-        Title =
-            "ไม่มีผู้เล่น",
-
-        Icon = ""
-
-    }
-
-
-if InitialWarpPlayers[1] then
-
+if InitialWarp[1] then
     SelectedWarpPlayer =
-        InitialWarpPlayers[1].Title
-
+        InitialWarp[1].Title
 end
-
 
 WarpDropdown =
     WarpTab:Dropdown({
-
         Title = "Player",
-
-        Desc =
-            "เลือกผู้เล่นที่จะวาปไปหา",
-
+        Desc = "เลือกผู้เล่น",
         Icon = "users",
 
         Values =
-            #InitialWarpPlayers > 0
-            and InitialWarpPlayers
+            #InitialWarp > 0
+            and InitialWarp
             or {
-
                 {
-                    Title =
-                        "ไม่มีผู้เล่น",
-
+                    Title = "ไม่มีผู้เล่น",
                     Icon = ""
-
                 }
-
             },
 
         Value =
-            InitialWarpValue,
+            InitialWarp[1]
+            or {
+                Title = "ไม่มีผู้เล่น",
+                Icon = ""
+            },
 
         AllowNone = true,
-
         SearchBarEnabled = true,
 
         Callback = function(Value)
 
             local Name =
-                GetDropdownName(
-                    Value
+                type(Value) == "table"
+                and (
+                    Value.Title
+                    or (
+                        Value[1]
+                        and (
+                            Value[1].Title
+                            or Value[1]
+                        )
+                    )
                 )
-
-            if not Name
-            or Name == ""
-            or Name == "ไม่มีผู้เล่น" then
-
-                SelectedWarpPlayer =
-                    nil
-
-                return
-
-            end
+                or Value
 
             SelectedWarpPlayer =
-                Name
-
+                (
+                    not Name
+                    or Name == ""
+                    or Name == "ไม่มีผู้เล่น"
+                )
+                and nil
+                or Name
         end
-
     })
 
-
-local function RefreshWarpList()
-
-    if not WarpDropdown then
-        return
-    end
-
-    local List =
-        GetWarpPlayers()
-
-    if #List > 0 then
-
-        WarpDropdown:Refresh(
-            List
-        )
-
-        SelectedWarpPlayer =
-            List[1].Title
-
-        if WarpDropdown.Select then
-
-            pcall(function()
-
-                WarpDropdown:Select(
-                    List[1]
-                )
-
-            end)
-
-        end
-
-    else
-
-        SelectedWarpPlayer =
-            nil
-
-        local Empty = {
-
-            {
-                Title =
-                    "ไม่มีผู้เล่น",
-
-                Icon = ""
-
-            }
-
-        }
-
-        WarpDropdown:Refresh(
-            Empty
-        )
-
-        if WarpDropdown.Select then
-
-            pcall(function()
-
-                WarpDropdown:Select(
-                    Empty[1]
-                )
-
-            end)
-
-        end
-
-    end
-
-end
-
-
 WarpTab:Button({
-
     Title = "Teleport",
-
-    Desc =
-        "วาปไปยังผู้เล่นที่เลือก",
-
+    Desc = "วาปไปหา",
     Icon = "send",
 
     Callback = function()
 
-        local Target =
-            GetWarpTarget()
-
-        if not Target then
+        if not SelectedWarpPlayer then
 
             WindUI:Notify({
-
                 Title = "Teleport",
-
-                Content =
-                    "กรุณาเลือกผู้เล่นก่อน",
-
+                Content = "กรุณาเลือกผู้เล่นก่อน",
                 Duration = 2
-
             })
 
             return
-
         end
 
-        local Character =
-            Player.Character
-
-        local TargetCharacter =
-            Target.Character
-
-        if not Character
-        or not TargetCharacter then
-            return
-        end
-
-        local Root =
-            GetRoot(Character)
-
-        local TargetRoot =
-            GetRoot(TargetCharacter)
-
-        if not Root
-        or not TargetRoot then
-            return
-        end
-
-        Root.CFrame =
-            TargetRoot.CFrame
-            * CFrame.new(
-                0,
-                3,
-                0
+        local Target =
+            Players:FindFirstChild(
+                SelectedWarpPlayer
             )
 
-        WindUI:Notify({
+        local Root =
+            GetRoot(GetCharacter())
 
-            Title =
-                "Teleport Success",
+        local TargetRoot =
+            Target
+            and GetRoot(Target.Character)
 
-            Content =
-                "วาปไปหา "
-                .. Target.DisplayName,
+        if Root and TargetRoot then
 
-            Duration = 2
-
-        })
-
+            Root.CFrame =
+                TargetRoot.CFrame
+                * CFrame.new(0, 3, 0)
+        end
     end
-
 })
 
-
 WarpTab:Button({
-
     Title = "Refresh Players",
-
-    Desc =
-        "อัปเดตรายชื่อผู้เล่น",
-
+    Desc = "อัปเดตรายชื่อ",
     Icon = "refresh-cw",
 
     Callback = function()
 
-        RefreshWarpList()
+        local List =
+            GetWarpPlayers()
 
-        WindUI:Notify({
+        WarpDropdown:Refresh(
+            #List > 0
+            and List
+            or {
+                {
+                    Title = "ไม่มีผู้เล่น",
+                    Icon = ""
+                }
+            }
+        )
 
-            Title =
-                "Teleport",
-
-            Content =
-                "อัปเดตรายชื่อแล้ว",
-
-            Duration = 2
-
-        })
-
+        SelectedWarpPlayer =
+            #List > 0
+            and List[1].Title
+            or nil
     end
-
 })
 
-
 -- =========================================================
--- 27 | TROLL
+-- 25 | TROLL TAB
 -- =========================================================
 
 local TrollTab =
     Window:Tab({
-
         Title = "Troll",
-
         Icon = "smile"
-
     })
 
-
 TrollTab:Section({
-
-    Title =
-        "Player Selection",
-
-    Icon =
-        "users"
-
+    Title = "Player Selection",
+    Icon = "users"
 })
-
 
 local function GetBangPlayers()
 
     local List = {}
 
-    for _,TargetPlayer in ipairs(
-        Players:GetPlayers()
-    ) do
+    for _, tp in ipairs(Players:GetPlayers()) do
 
-        if TargetPlayer ~= Player then
+        if tp ~= Player then
 
-            table.insert(
-                List,
-                {
-
-                    Title =
-                        TargetPlayer.Name,
-
-                    Desc =
-                        TargetPlayer.DisplayName,
-
-                    Icon =
-                        GetAvatar(
-                            TargetPlayer
-                        ),
-
-                    IconSize = 28
-
-                }
-            )
-
+            table.insert(List, {
+                Title = tp.Name,
+                Desc = tp.DisplayName,
+                Icon = GetAvatar(tp),
+                IconSize = 28
+            })
         end
-
     end
 
     table.sort(
         List,
-        function(A,B)
-
-            return A.Title:lower()
-                < B.Title:lower()
-
+        function(A, B)
+            return A.Title:lower() < B.Title:lower()
         end
     )
 
     return List
-
 end
 
-
-local BangDropdown = nil
-
-
-local InitialBangPlayers =
+local InitialBang =
     GetBangPlayers()
 
-local InitialBangValue =
-    InitialBangPlayers[1]
-    or {
-
-        Title =
-            "ไม่มีผู้เล่น",
-
-        Icon = ""
-
-    }
-
-
-if InitialBangPlayers[1] then
-
+if InitialBang[1] then
     SelectedBangPlayer =
-        InitialBangPlayers[1].Title
-
+        InitialBang[1].Title
 end
 
-
-BangDropdown =
+local BangDropdown =
     TrollTab:Dropdown({
-
         Title = "Player",
-
-        Desc =
-            "เลือกผู้เล่นที่จะแกล้ง",
-
-        Icon =
-            "user-round",
+        Desc = "เลือกผู้เล่น",
+        Icon = "user-round",
 
         Values =
-            #InitialBangPlayers > 0
-            and InitialBangPlayers
+            #InitialBang > 0
+            and InitialBang
             or {
-
                 {
-                    Title =
-                        "ไม่มีผู้เล่น",
-
+                    Title = "ไม่มีผู้เล่น",
                     Icon = ""
-
                 }
-
             },
 
         Value =
-            InitialBangValue,
+            InitialBang[1]
+            or {
+                Title = "ไม่มีผู้เล่น",
+                Icon = ""
+            },
 
         AllowNone = true,
-
         SearchBarEnabled = true,
 
         Callback = function(Value)
 
             local Name =
-                GetDropdownName(
-                    Value
+                type(Value) == "table"
+                and (
+                    Value.Title
+                    or (
+                        Value[1]
+                        and (
+                            Value[1].Title
+                            or Value[1]
+                        )
+                    )
                 )
-
-            if not Name
-            or Name == ""
-            or Name == "ไม่มีผู้เล่น" then
-
-                SelectedBangPlayer =
-                    nil
-
-                return
-
-            end
+                or Value
 
             SelectedBangPlayer =
-                Name
-
+                (
+                    not Name
+                    or Name == ""
+                    or Name == "ไม่มีผู้เล่น"
+                )
+                and nil
+                or Name
         end
-
     })
 
-
-local function RefreshBangList()
-
-    if not BangDropdown then
-        return
-    end
-
-    local List =
-        GetBangPlayers()
-
-    if #List > 0 then
-
-        BangDropdown:Refresh(
-            List
-        )
-
-        SelectedBangPlayer =
-            List[1].Title
-
-        if BangDropdown.Select then
-
-            pcall(function()
-
-                BangDropdown:Select(
-                    List[1]
-                )
-
-            end)
-
-        end
-
-    else
-
-        SelectedBangPlayer =
-            nil
-
-        local Empty = {
-
-            {
-                Title =
-                    "ไม่มีผู้เล่น",
-
-                Icon = ""
-
-            }
-
-        }
-
-        BangDropdown:Refresh(
-            Empty
-        )
-
-        if BangDropdown.Select then
-
-            pcall(function()
-
-                BangDropdown:Select(
-                    Empty[1]
-                )
-
-            end)
-
-        end
-
-    end
-
-end
-
-
 TrollTab:Button({
-
-    Title =
-        "Refresh Players",
-
-    Desc =
-        "อัปเดตรายชื่อผู้เล่น",
-
-    Icon =
-        "refresh-cw",
+    Title = "Refresh Players",
+    Desc = "อัปเดตรายชื่อ",
+    Icon = "refresh-cw",
 
     Callback = function()
 
-        RefreshBangList()
+        local List =
+            GetBangPlayers()
 
-        WindUI:Notify({
+        BangDropdown:Refresh(
+            #List > 0
+            and List
+            or {
+                {
+                    Title = "ไม่มีผู้เล่น",
+                    Icon = ""
+                }
+            }
+        )
 
-            Title =
-                "Troll",
-
-            Content =
-                "อัปเดตรายชื่อแล้ว",
-
-            Duration = 2
-
-        })
-
+        SelectedBangPlayer =
+            #List > 0
+            and List[1].Title
+            or nil
     end
-
 })
-
 
 BangToggle =
     TrollTab:Toggle({
-
         Title = "Bang",
-
-        Desc =
-            "เปิด / ปิดการทำงาน",
-
+        Desc = "เปิด / ปิด",
         Icon = "zap",
-
         Value = false,
 
         Callback = function(Value)
@@ -3449,215 +1873,110 @@ BangToggle =
 
                 if not SelectedBangPlayer then
 
-                    if BangToggle then
-
-                        SetToggleUI(
-                            BangToggle,
-                            false
-                        )
-
-                    end
-
-                    BangEnabled =
-                        false
-
-                    WindUI:Notify({
-
-                        Title =
-                            "Troll",
-
-                        Content =
-                            "กรุณาเลือกผู้เล่นก่อน",
-
-                        Duration = 2
-
-                    })
-
-                    return
-
-                end
-
-                local Started =
-                    StartBang()
-
-                if not Started then
-
-                    BangEnabled =
-                        false
-
                     SetToggleUI(
                         BangToggle,
                         false
                     )
 
+                    BangEnabled = false
+
                     WindUI:Notify({
-
-                        Title =
-                            "Troll",
-
-                        Content =
-                            "ไม่สามารถเริ่ม Bang ได้",
-
-                        Duration = 3
-
+                        Title = "Troll",
+                        Content = "กรุณาเลือกผู้เล่นก่อน",
+                        Duration = 2
                     })
 
+                    return
+                end
+
+                if not StartBang() then
+
+                    BangEnabled = false
+
+                    SetToggleUI(
+                        BangToggle,
+                        false
+                    )
                 end
 
             else
 
                 StopBang()
-
             end
-
         end
-
     })
 
-
 -- =========================================================
--- 28 | TOOLS
+-- 26 | TOOLS TAB
 -- =========================================================
 
 local ToolsTab =
     Window:Tab({
-
         Title = "Tools",
-
         Icon = "wrench"
-
     })
 
-
 ToolsTab:Section({
-
     Title = "Utilities",
-
     Icon = "tool"
-
 })
 
-
 ToolsTab:Button({
-
     Title = "Teleport Tool",
-
-    Desc =
-        "สร้างไอเท็มสำหรับวาปไปยังตำแหน่งที่แตะ",
-
+    Desc = "สร้างไอเท็มวาป",
     Icon = "map-pin",
 
     Callback = function()
-
         CreateTeleportTool()
-
     end
-
 })
 
-
 ToolsTab:Button({
-
     Title = "Anti Lag",
-
-    Desc =
-        "เปิดระบบลดแลค",
-
+    Desc = "ลดแลค",
     Icon = "gauge",
 
     Callback = function()
 
         if AntiLagLoaded then
-
-            WindUI:Notify({
-
-                Title =
-                    "Anti Lag",
-
-                Content =
-                    "เปิดใช้งานไปแล้ว",
-
-                Duration = 2
-
-            })
-
             return
-
         end
 
         local Success, Error =
             pcall(function()
 
-                local Source =
-                    game:HttpGet(
-                        "https://raw.githubusercontent.com/VikiChardd/AntiLag_TSB/main/Protect_MeowTBS1999.lua.txt"
-                    )
-
-                local Script =
-                    loadstring(Source)
-
-                if not Script then
-
-                    error(
-                        "โหลดสคริปต์ลดแลคไม่สำเร็จ"
-                    )
-
-                end
-
-                Script()
+                loadstring(game:HttpGet(
+                    "https://raw.githubusercontent.com/VikiChardd/AntiLag_TSB/main/Protect_MeowTBS1999.lua.txt"
+                ))()
 
             end)
 
         if Success then
 
-            AntiLagLoaded =
-                true
+            AntiLagLoaded = true
 
             WindUI:Notify({
-
-                Title =
-                    "Anti Lag",
-
-                Content =
-                    "เปิดใช้งานแล้ว",
-
+                Title = "Anti Lag",
+                Content = "เปิดใช้งานแล้ว",
                 Duration = 2
-
             })
 
         else
 
             WindUI:Notify({
-
-                Title =
-                    "Anti Lag Error",
-
-                Content =
-                    tostring(Error),
-
+                Title = "Anti Lag Error",
+                Content = tostring(Error),
                 Duration = 4
-
             })
-
         end
-
     end
-
 })
-
 
 UnlockCamToggle =
     ToolsTab:Toggle({
-
-        Title =
-            "Unlock Camera",
-
-        Desc =
-            "ปลดล็อคมุมกล้องและคืนค่าเดิม",
-
-        Icon =
-            "camera",
-
+        Title = "Unlock Camera",
+        Desc = "ปลดล็อคมุมกล้อง",
+        Icon = "camera",
         Value = false,
 
         Callback = function(Value)
@@ -3666,27 +1985,15 @@ UnlockCamToggle =
                 return
             end
 
-            ToggleUnlockCam(
-                Value
-            )
-
+            ToggleUnlockCam(Value)
         end
-
     })
-
 
 FullbrightToggle =
     ToolsTab:Toggle({
-
-        Title =
-            "Fullbright",
-
-        Desc =
-            "เพิ่มความสว่างให้มองเห็นชัดขึ้น",
-
-        Icon =
-            "sun",
-
+        Title = "Fullbright",
+        Desc = "เพิ่มความสว่าง",
+        Icon = "sun",
         Value = false,
 
         Callback = function(Value)
@@ -3695,32 +2002,21 @@ FullbrightToggle =
                 return
             end
 
-            FullbrightEnabled =
-                Value
+            FullbrightEnabled = Value
 
             if Value then
                 Bright()
             else
                 RemoveBright()
             end
-
         end
-
     })
-
 
 InstantInteractionToggle =
     ToolsTab:Toggle({
-
-        Title =
-            "Instant Interaction",
-
-        Desc =
-            "กดใช้งานทันทีโดยไม่ต้องรอ",
-
-        Icon =
-            "hand",
-
+        Title = "Instant Interaction",
+        Desc = "กดใช้งานทันที",
+        Icon = "hand",
         Value = false,
 
         Callback = function(Value)
@@ -3729,631 +2025,415 @@ InstantInteractionToggle =
                 return
             end
 
-            ToggleInstantInteraction(
-                Value
-            )
-
+            ToggleInstantInteraction(Value)
         end
-
     })
 
-
 ToolsTab:Button({
-
-    Title =
-        "Jerk Off",
-
-    Desc =
-        "เล่นแอนิเมชันจากสคริปต์",
-
-    Icon =
-        "play",
+    Title = "Jerk Off",
+    Desc = "เล่นแอนิเมชัน",
+    Icon = "play",
 
     Callback = function()
 
-        local Success, Error =
-            pcall(function()
+        pcall(function()
 
-                local Source =
-                    game:HttpGet(
-                        "https://pastefy.app/wa3v2Vgm/raw"
-                    )
+            loadstring(game:HttpGet(
+                "https://pastefy.app/wa3v2Vgm/raw"
+            ))("script")
 
-                local Script =
-                    loadstring(Source)
-
-                if not Script then
-
-                    error(
-                        "โหลด Script ไม่สำเร็จ"
-                    )
-
-                end
-
-                Script("script")
-
-            end)
-
-        WindUI:Notify({
-
-            Title =
-                Success
-                and "Jerk Off"
-                or "Jerk Off Error",
-
-            Content =
-                Success
-                and "เปิดใช้งานแล้ว"
-                or tostring(Error),
-
-            Duration =
-                Success
-                and 2
-                or 4
-
-        })
-
+        end)
     end
-
 })
 
-
 ToolsTab:Button({
-
-    Title =
-        "Reset Character",
-
-    Desc =
-        "รีเซ็ตตัวละคร",
-
-    Icon =
-        "rotate-ccw",
+    Title = "Reset Character",
+    Desc = "รีเซ็ตตัวละคร",
+    Icon = "rotate-ccw",
 
     Callback = function()
 
-        SaveResetPosition()
+        if ResetStayPositionEnabled then
 
-        local Character =
-            Player.Character
+            local Root =
+                GetRoot(Player.Character)
 
-        if not Character then
-            return
+            if Root then
+                SavedResetPosition =
+                    Root.CFrame
+            end
         end
 
-        local Humanoid =
-            GetHumanoid(
-                Character
-            )
+        local Hum =
+            GetHumanoid(Player.Character)
 
-        if Humanoid then
-
-            Humanoid.Health = 0
-
+        if Hum then
+            Hum.Health = 0
         end
-
     end
-
 })
-
 
 StayAfterResetToggle =
     ToolsTab:Toggle({
-
-        Title =
-            "Stay After Reset",
-
-        Desc =
-            "รีตัวแล้วกลับมาตำแหน่งเดิม",
-
-        Icon =
-            "map-pin-check",
-
+        Title = "Stay After Reset",
+        Desc = "กลับมาตำแหน่งเดิมหลังรี",
+        Icon = "map-pin-check",
         Value = false,
 
         Callback = function(Value)
 
-            if DisableAllInProgress then
-                return
-            end
-
-            ResetStayPositionEnabled =
-                Value
+            ResetStayPositionEnabled = Value
 
             if Value then
 
-                SaveResetPosition()
+                local Root =
+                    GetRoot(Player.Character)
+
+                SavedResetPosition =
+                    Root
+                    and Root.CFrame
+                    or nil
 
             else
 
-                SavedResetPosition =
-                    nil
-
+                SavedResetPosition = nil
             end
-
         end
-
     })
 
-
 -- =========================================================
--- 29 | SETTINGS
+-- 27 | SETTINGS
 -- =========================================================
 
 local SettingsTab =
     Window:Tab({
-
-        Title =
-            "Settings",
-
-        Icon =
-            "settings"
-
+        Title = "Settings",
+        Icon = "settings"
     })
 
-
 SettingsTab:Section({
-
-    Title =
-        "Settings",
-
-    Icon =
-        "settings"
-
+    Title = "Settings",
+    Icon = "settings"
 })
 
-
 SettingsTab:Dropdown({
-
-    Title =
-        "UI Theme",
-
-    Desc =
-        "เปลี่ยนสีธีมของ XD Hub",
-
-    Icon =
-        "palette",
+    Title = "UI Theme",
+    Desc = "เปลี่ยนธีม",
+    Icon = "palette",
 
     Values = {
-
         "1. ดำ",
-
         "2. ขาว"
-
     },
 
-    Value =
-        "1. ดำ",
-
-    AllowNone =
-        false,
+    Value = "1. ดำ",
+    AllowNone = false,
 
     Callback = function(Value)
 
         local Selected =
-            Value
+            type(Value) == "table"
+            and (Value[1] or Value.Title)
+            or Value
 
-        if type(Value) == "table" then
-
-            Selected =
-                Value[1]
-                or Value.Title
-
-        end
-
-        if Selected == "1. ดำ" then
-
-            WindUI:SetTheme(
-                "Dark"
-            )
-
-            WindUI:Notify({
-
-                Title =
-                    "UI Theme",
-
-                Content =
-                    "เปลี่ยนเป็นธีมสีดำแล้ว",
-
-                Duration = 2
-
-            })
-
-        elseif Selected == "2. ขาว" then
-
-            WindUI:SetTheme(
-                "Light"
-            )
-
-            WindUI:Notify({
-
-                Title =
-                    "UI Theme",
-
-                Content =
-                    "เปลี่ยนเป็นธีมสีขาวแล้ว",
-
-                Duration = 2
-
-            })
-
-        end
-
+        WindUI:SetTheme(
+            Selected == "1. ดำ"
+            and "Dark"
+            or "Light"
+        )
     end
-
 })
-
 
 SettingsTab:Divider()
 
-
 SettingsTab:Button({
-
-    Title =
-        "Rejoin Server",
-
-    Desc =
-        "ออกแล้วเข้าเซิร์ฟเวอร์เดิมอีกครั้ง",
-
-    Icon =
-        "rotate-cw",
+    Title = "Rejoin Server",
+    Desc = "เข้าเซิร์ฟเดิม",
+    Icon = "rotate-cw",
 
     Callback = function()
 
-        WindUI:Notify({
+        TeleportService:TeleportToPlaceInstance(
+            game.PlaceId,
+            game.JobId,
+            Player
+        )
+    end
+})
 
-            Title =
-                "Rejoin Server",
+SettingsTab:Button({
+    Title = "Server Hop",
+    Desc = "ย้ายเซิร์ฟ",
+    Icon = "shuffle",
 
-            Content =
-                "กำลังเข้าเซิร์ฟเวอร์เดิม...",
-
-            Duration = 2
-
-        })
-
-        task.wait(0.2)
+    Callback = function()
 
         pcall(function()
 
-            TeleportService:
-                TeleportToPlaceInstance(
-                    game.PlaceId,
-                    game.JobId,
-                    Player
-                )
+            local Cursor = nil
 
-        end)
+            for _ = 1, 3 do
 
-    end
+                local URL =
+                    "https://games.roblox.com/v1/games/"
+                    .. tostring(game.PlaceId)
+                    .. "/servers/Public?sortOrder=Asc&limit=100"
 
-})
-
-
-SettingsTab:Button({
-
-    Title =
-        "Server Hop",
-
-    Desc =
-        "ย้ายไปเซิร์ฟเวอร์อื่น",
-
-    Icon =
-        "shuffle",
-
-    Callback = function()
-
-        local Success, Error =
-            pcall(function()
-
-                local PlaceId =
-                    game.PlaceId
-
-                local CurrentJobId =
-                    game.JobId
-
-                local Cursor = ""
-
-                for Attempt = 1,3 do
-
-                    local URL =
-                        "https://games.roblox.com/v1/games/"
-                        .. tostring(PlaceId)
-                        .. "/servers/Public?sortOrder=Asc&limit=100"
-
-                    if Cursor ~= "" then
-
-                        URL =
-                            URL
-                            .. "&cursor="
-                            .. HttpService:UrlEncode(
-                                Cursor
-                            )
-
-                    end
-
-                    local Response =
-                        game:HttpGet(
-                            URL
-                        )
-
-                    local Data =
-                        HttpService:JSONDecode(
-                            Response
-                        )
-
-                    if Data
-                    and Data.data then
-
-                        for _,Server in ipairs(
-                            Data.data
-                        ) do
-
-                            if Server.id
-                            and Server.id ~= CurrentJobId
-                            and Server.playing
-                            and Server.maxPlayers
-                            and Server.playing < Server.maxPlayers then
-
-                                WindUI:Notify({
-
-                                    Title =
-                                        "Server Hop",
-
-                                    Content =
-                                        "กำลังย้ายเซิร์ฟเวอร์...",
-
-                                    Duration = 2
-
-                                })
-
-                                task.wait(0.2)
-
-                                TeleportService:
-                                    TeleportToPlaceInstance(
-                                        PlaceId,
-                                        Server.id,
-                                        Player
-                                    )
-
-                                return
-
-                            end
-
-                        end
-
-                    end
-
-                    Cursor =
-                        Data
-                        and Data.nextPageCursor
-                        or ""
-
-                    if Cursor == "" then
-                        break
-                    end
-
+                if Cursor then
+                    URL = URL .. "&cursor=" .. HttpService:UrlEncode(Cursor)
                 end
 
-                error(
-                    "ไม่พบเซิร์ฟเวอร์อื่น"
-                )
+                local Response =
+                    game:HttpGet(URL)
 
-            end)
+                local Data =
+                    HttpService:JSONDecode(Response)
 
-        if not Success then
+                for _, Server in ipairs(Data.data or {}) do
 
-            WindUI:Notify({
+                    if Server.id ~= game.JobId
+                        and Server.playing < Server.maxPlayers
+                    then
 
-                Title =
-                    "Server Hop Error",
+                        TeleportService:TeleportToPlaceInstance(
+                            game.PlaceId,
+                            Server.id,
+                            Player
+                        )
 
-                Content =
-                    tostring(Error),
+                        return
+                    end
+                end
 
-                Duration = 4
+                Cursor = Data.nextPageCursor
 
-            })
-
-        end
-
+                if not Cursor then
+                    break
+                end
+            end
+        end)
     end
-
 })
-
 
 SettingsTab:Divider()
 
+-- =========================================================
+-- 28 | DISABLE ALL
+-- =========================================================
 
 SettingsTab:Button({
-
-    Title =
-        "Disable All",
-
-    Desc =
-        "ปิดฟังก์ชันทั้งหมดของ XD Hub",
-
-    Icon =
-        "power",
+    Title = "Disable All",
+    Desc = "ปิดฟังก์ชันทั้งหมด",
+    Icon = "power",
 
     Callback = function()
 
-        DisableAllFeatures()
+        DisableAllInProgress = true
 
+        SpeedEnabled = false
+        JumpEnabled = false
+        InfiniteJumpEnabled = false
+        NoclipEnabled = false
+
+        TargetLockEnabled = false
+        ShowFovCircle = false
+        ESPEnabled = false
+        HitboxEnabled = false
+
+        FullbrightEnabled = false
+        InstantInteractionEnabled = false
+        UnlockCamEnabled = false
+        BangEnabled = false
+        ResetStayPositionEnabled = false
+
+        AimbotTarget = nil
+        SavedResetPosition = nil
+
+        if FovCircle then
+            FovCircle.Visible = false
+        end
+
+        SetToggleUI(SpeedToggle, false)
+        SetToggleUI(JumpToggle, false)
+        SetToggleUI(InfiniteJumpToggle, false)
+        SetToggleUI(NoclipToggle, false)
+
+        SetToggleUI(AimbotToggle, false)
+        SetToggleUI(FovCircleToggle, false)
+        SetToggleUI(ESPToggle, false)
+        SetToggleUI(HitboxToggle, false)
+
+        SetToggleUI(UnlockCamToggle, false)
+        SetToggleUI(FullbrightToggle, false)
+        SetToggleUI(InstantInteractionToggle, false)
+        SetToggleUI(BangToggle, false)
+        SetToggleUI(StayAfterResetToggle, false)
+
+        ToggleAllESP(false)
+        RestoreAllHitboxes()
+        RemoveBright()
+        RestorePrompts()
+        ToggleUnlockCam(false)
+        StopBang()
+        RestoreNoclip()
+        RemoveCreatedTeleportTool()
+
+        ApplySpeed()
+        ApplyJump()
+
+        if Player.Character then
+            ApplyInfiniteJump(Player.Character)
+        end
+
+        DisableAllInProgress = false
+
+        WindUI:Notify({
+            Title = "XD Hub",
+            Content = "ปิดฟังก์ชันทั้งหมดแล้ว",
+            Duration = 3
+        })
     end
-
 })
 
-
 -- =========================================================
--- 30 | MAIN LOOP
+-- 29 | PLAYER JOIN
 -- =========================================================
 
-local AimbotTimer = 0
-local NoclipTimer = 0
+Players.PlayerAdded:Connect(function(tp)
 
+    SetupESPPlayer(tp)
 
-RunService.RenderStepped:Connect(
-    function(DeltaTime)
+    task.wait(0.2)
 
-        if not Camera then
-            Camera =
-                workspace.CurrentCamera
-        end
+    if WarpDropdown then
+        WarpDropdown:Refresh(
+            GetWarpPlayers()
+        )
+    end
 
+    if BangDropdown then
+        BangDropdown:Refresh(
+            GetBangPlayers()
+        )
+    end
+end)
 
-        -- FOV
+Players.PlayerRemoving:Connect(function(tp)
 
-        if FovCircle
-        and Camera then
+    ClearAvatarCache(tp.UserId)
 
-            FovCircle.Position =
-                Vector2.new(
-                    Camera.ViewportSize.X / 2,
-                    Camera.ViewportSize.Y / 2
-                )
+    task.defer(function()
 
-            FovCircle.Radius =
-                FovRadius
-
-            FovCircle.Color =
-                LockColor
-
-            FovCircle.Visible =
-                ShowFovCircle
-
-        end
-
-
-        -- AIMBOT
-
-        if TargetLockEnabled
-        and Camera then
-
-            AimbotTimer =
-                AimbotTimer
-                + DeltaTime
-
-            if AimbotTimer >= 0.05 then
-
-                AimbotTimer = 0
-
-                if not AimbotTarget
-                or not AimbotTarget.Parent
-                or not IsTargetInsideFOV(
-                    AimbotTarget
-                )
-                or not IsVisible(
-                    AimbotTarget
-                ) then
-
-                    AimbotTarget =
-                        GetClosestTargetInFOV()
-
-                end
-
-            end
-
-
-            if AimbotTarget
-            and AimbotTarget.Parent
-            and AimbotTarget:IsDescendantOf(
-                workspace
+        if WarpDropdown then
+            WarpDropdown:Refresh(
+                GetWarpPlayers()
             )
-            and IsTargetInsideFOV(
-                AimbotTarget
-            ) then
+        end
 
-                local CameraPosition =
-                    Camera.CFrame.Position
+        if BangDropdown then
+            BangDropdown:Refresh(
+                GetBangPlayers()
+            )
+        end
+    end)
+end)
 
-                local TargetPosition =
+-- =========================================================
+-- 30 | MAIN RENDER LOOP
+-- =========================================================
+
+RunService.RenderStepped:Connect(function()
+
+    if not Camera then
+        Camera = workspace.CurrentCamera
+    end
+
+    -- FOV
+    if FovCircle and Camera then
+
+        FovCircle.Position =
+            Vector2.new(
+                Camera.ViewportSize.X / 2,
+                Camera.ViewportSize.Y / 2
+            )
+
+        FovCircle.Radius = FovRadius
+        FovCircle.Color = LockColor
+        FovCircle.Visible = ShowFovCircle
+    end
+
+    -- AIMBOT
+    if TargetLockEnabled and Camera then
+
+        if not AimbotTarget
+            or not AimbotTarget.Parent
+            or not IsTargetInsideFOV(AimbotTarget)
+            or not IsVisible(AimbotTarget)
+        then
+
+            AimbotTarget =
+                GetClosestTargetInFOV()
+        end
+
+        if AimbotTarget
+            and AimbotTarget.Parent
+            and IsTargetInsideFOV(AimbotTarget)
+        then
+
+            local LookCFrame =
+                CFrame.new(
+                    Camera.CFrame.Position,
                     AimbotTarget.Position
+                )
 
-                local TargetCFrame =
-                    CFrame.new(
-                        CameraPosition,
-                        TargetPosition
-                    )
-
-                local Alpha =
-                    1 /
-                    math.max(
+            Camera.CFrame =
+                Camera.CFrame:Lerp(
+                    LookCFrame,
+                    1 / math.max(
                         AimSmoothness,
                         1
                     )
-
-                Camera.CFrame =
-                    Camera.CFrame:Lerp(
-                        TargetCFrame,
-                        Alpha
-                    )
-
-            else
-
-                AimbotTarget =
-                    nil
-
-            end
+                )
 
         else
 
-            AimbotTimer = 0
             AimbotTarget = nil
-
         end
 
+    else
 
-        -- NOCLIP
-
-        if NoclipEnabled then
-
-            NoclipTimer =
-                NoclipTimer
-                + DeltaTime
-
-            if NoclipTimer >= 0.12 then
-
-                NoclipTimer = 0
-
-                UpdateNoclip()
-
-            end
-
-        else
-
-            NoclipTimer = 0
-
-        end
-
+        AimbotTarget = nil
     end
-)
 
+    -- NOCLIP
+    if NoclipEnabled then
+
+        local Char = GetCharacter()
+
+        if Char then
+
+            for _, Obj in ipairs(Char:GetDescendants()) do
+
+                if Obj:IsA("BasePart") then
+                    Obj.CanCollide = false
+                end
+            end
+        end
+    end
+end)
 
 -- =========================================================
--- 31 | HITBOX LOOP
+-- 31 | PERIODIC LOOP
 -- =========================================================
 
 task.spawn(function()
 
-    while task.wait(0.18) do
+    while task.wait(0.2) do
 
         if HitboxEnabled then
             UpdateHitboxes()
         end
 
-    end
-
-end)
-
-
--- =========================================================
--- 32 | SPEED / JUMP LOOP
--- =========================================================
-
-task.spawn(function()
-
-    while task.wait(0.20) do
-
         if SpeedEnabled then
             ApplySpeed()
         end
@@ -4362,287 +2442,114 @@ task.spawn(function()
             ApplyJump()
         end
 
+        if FullbrightEnabled then
+            Bright()
+        end
     end
-
 end)
 
-
 -- =========================================================
--- 33 | PLAYER JOIN
--- =========================================================
-
-Players.PlayerAdded:Connect(
-    function(TargetPlayer)
-
-        SetupESPPlayer(
-            TargetPlayer
-        )
-
-        task.wait(0.2)
-
-        if WarpDropdown then
-            RefreshWarpList()
-        end
-
-        if BangDropdown then
-            RefreshBangList()
-        end
-
-    end
-)
-
-
--- =========================================================
--- 34 | PLAYER LEAVE
+-- 32 | CHARACTER RESPAWN
 -- =========================================================
 
-Players.PlayerRemoving:Connect(
-    function(TargetPlayer)
+Player.CharacterAdded:Connect(function(Char)
 
-        ClearAvatarCache(
-            TargetPlayer
-        )
+    RestoreNoclip()
 
-        if TargetPlayer.Character then
+    AimbotTarget = nil
 
-            RemoveESP(
-                TargetPlayer.Character
-            )
+    task.wait(0.25)
 
-        end
+    local Hum =
+        GetHumanoid(Char)
 
-
-        if SelectedBangPlayer
-        == TargetPlayer.Name then
-
-            StopBang()
-
-            SelectedBangPlayer =
-                nil
-
-            if BangToggle then
-
-                SetToggleUI(
-                    BangToggle,
-                    false
-                )
-
-            end
-
-        end
-
-
-        if AimbotTarget
-        and TargetPlayer.Character
-        and AimbotTarget:IsDescendantOf(
-            TargetPlayer.Character
-        ) then
-
-            AimbotTarget =
-                nil
-
-        end
-
-
-        task.defer(function()
-
-            if WarpDropdown then
-                RefreshWarpList()
-            end
-
-            if BangDropdown then
-                RefreshBangList()
-            end
-
-        end)
-
-    end
-)
-
-
--- =========================================================
--- 35 | CHARACTER RESPAWN
--- =========================================================
-
-Player.CharacterAdded:Connect(
-    function(Character)
-
-        RestoreNoclip()
-
-        AimbotTarget =
-            nil
-
-        if HitboxEnabled then
-            task.defer(
-                UpdateHitboxes
-            )
-        end
-
-        task.wait(0.25)
-
-        local Humanoid =
-            Character:WaitForChild(
-                "Humanoid",
-                10
-            )
-
-        if not Humanoid then
-            return
-        end
-
-
-        -- เก็บค่าเดิมของตัวละครใหม่
-        OriginalWalkSpeed =
-            Humanoid.WalkSpeed
-
-        OriginalJumpPower =
-            Humanoid.JumpPower
-
-        OriginalJumpHeight =
-            Humanoid.JumpHeight
-
-        OriginalBreakJointsOnDeath =
-            Humanoid.BreakJointsOnDeath
-
-
-        -- SPEED
-        if SpeedEnabled then
-            ApplySpeed()
-        end
-
-
-        -- JUMP
-        if JumpEnabled then
-            ApplyJump()
-        end
-
-
-        -- INFINITE JUMP
-        if InfiniteJumpEnabled then
-            ApplyInfiniteJump(
-                Character
-            )
-        end
-
-
-        -- NOCLIP
-        if NoclipEnabled then
-            SaveNoclipParts()
-        end
-
-
-        -- ESP ไม่ต้องทำกับ LocalPlayer
-
-
-        -- CAMERA
-        if UnlockCamEnabled then
-
-            task.wait(0.1)
-
-            -- ไม่เรียก ToggleUnlockCam(true)
-            -- เพราะจะเขียนค่ากล้องเดิมทับ
-
-            Player.CameraMode =
-                Enum.CameraMode.Classic
-
-            Player.DevCameraOcclusionMode =
-                Enum.DevCameraOcclusionMode.Zoom
-
-            if Camera then
-
-                Camera.CameraType =
-                    Enum.CameraType.Custom
-
-                local Head =
-                    Character:FindFirstChild(
-                        "Head"
-                    )
-
-                if Head then
-
-                    Camera.CameraSubject =
-                        Head
-
-                end
-
-            end
-
-        end
-
-
-        -- BANG
-        if BangEnabled
-        and SelectedBangPlayer then
-
-            task.wait(1)
-
-            StopBang()
-
-            if SelectedBangPlayer then
-
-                StartBang()
-
-            end
-
-        end
-
-
-        -- STAY AFTER RESET
-        if ResetStayPositionEnabled
-        and SavedResetPosition then
-
-            ReturnToResetPosition(
-                Character
-            )
-
-        end
-
-    end
-)
-
-
--- =========================================================
--- 36 | SAVE INITIAL CHARACTER VALUES
--- =========================================================
-
-if Player.Character then
-
-    local Humanoid =
-        GetHumanoid(
-            Player.Character
-        )
-
-    if Humanoid then
-
-        OriginalWalkSpeed =
-            Humanoid.WalkSpeed
-
-        OriginalJumpPower =
-            Humanoid.JumpPower
-
-        OriginalJumpHeight =
-            Humanoid.JumpHeight
-
-        OriginalBreakJointsOnDeath =
-            Humanoid.BreakJointsOnDeath
-
+    if not Hum then
+        return
     end
 
-end
+    -- Save original values of new character
+    OriginalWalkSpeed =
+        Hum.WalkSpeed
 
+    OriginalJumpPower =
+        Hum.JumpPower
+
+    OriginalJumpHeight =
+        Hum.JumpHeight
+
+    OriginalBreakJointsOnDeath =
+        Hum.BreakJointsOnDeath
+
+    -- Reapply movement
+    if SpeedEnabled then
+        ApplySpeed()
+    end
+
+    if JumpEnabled then
+        ApplyJump()
+    end
+
+    if InfiniteJumpEnabled then
+        ApplyInfiniteJump(Char)
+    end
+
+    -- Restore camera without overwriting
+    -- the original camera values
+    if UnlockCamEnabled then
+
+        Player.CameraMode =
+            Enum.CameraMode.Classic
+
+        Player.DevCameraOcclusionMode =
+            Enum.DevCameraOcclusionMode.Zoom
+
+        if Camera then
+
+            Camera.CameraType =
+                Enum.CameraType.Custom
+
+            local Head =
+                Char:FindFirstChild("Head")
+
+            if Head then
+                Camera.CameraSubject = Head
+            end
+        end
+    end
+
+    -- Stay After Reset
+    if ResetStayPositionEnabled
+        and SavedResetPosition
+    then
+
+        task.wait(0.5)
+
+        local Root =
+            GetRoot(Char)
+
+        if Root then
+            Root.CFrame =
+                SavedResetPosition
+        end
+    end
+
+    -- Restart Bang
+    if BangEnabled
+        and SelectedBangPlayer
+    then
+
+        task.wait(1)
+
+        StartBang()
+    end
+end)
 
 -- =========================================================
--- 37 | READY
+-- 33 | READY
 -- =========================================================
 
 WindUI:Notify({
-
-    Title =
-        "XD Hub",
-
-    Content =
-        "โหลด XD Hub ",
-
+    Title = "XD Hub",
+    Content = "โหลดสำเร็จ",
     Duration = 3
-
 })
