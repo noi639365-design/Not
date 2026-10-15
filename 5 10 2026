@@ -1,30 +1,8 @@
--- =========================================================
--- XD HUB (Optimized with Avatar)
--- FULL FIXED VERSION
--- =========================================================
-
--- =========================================================
--- 00 | ANTI DUPLICATE
--- =========================================================
-
-if getgenv().XDHubAlreadyRunning then
-    warn("404!")
-    return
-end
-
-getgenv().XDHubAlreadyRunning = true
-
--- =========================================================
--- 01 | LOAD WINDUI
--- =========================================================
-
 local WindUI = loadstring(game:HttpGet(
     "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
 ))()
 
--- =========================================================
--- 02 | SERVICES
--- =========================================================
+-- SERVICES
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -40,9 +18,7 @@ workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
     Camera = workspace.CurrentCamera
 end)
 
--- =========================================================
--- 03 | STATES
--- =========================================================
+-- STATES
 
 local SpeedEnabled = false
 local SpeedValue = 16
@@ -103,9 +79,7 @@ local DisableAllInProgress = false
 local AntiLagLoaded = false
 local CreatedTeleportTool = nil
 
--- =========================================================
--- 04 | TOGGLE REFERENCES
--- =========================================================
+-- TOGGLE REFERENCES
 
 local SpeedToggle
 local JumpToggle
@@ -123,9 +97,7 @@ local InstantInteractionToggle
 local BangToggle
 local StayAfterResetToggle
 
--- =========================================================
--- 05 | UI TOGGLE HELPER
--- =========================================================
+-- UI TOGGLE HELPER
 
 local function SetToggleUI(ToggleObject, State)
     if not ToggleObject then
@@ -145,9 +117,7 @@ local function SetToggleUI(ToggleObject, State)
     end)
 end
 
--- =========================================================
--- 06 | AVATAR SYSTEM
--- =========================================================
+-- AVATAR SYSTEM
 
 local AvatarCache = {}
 
@@ -180,9 +150,7 @@ local function GetAvatar(PlayerObject)
     return Avatar
 end
 
--- =========================================================
--- 07 | CHARACTER HELPERS
--- =========================================================
+-- CHARACTER HELPERS
 
 local function GetCharacter()
     return Player.Character
@@ -196,9 +164,7 @@ local function GetRoot(Char)
     return Char and Char:FindFirstChild("HumanoidRootPart")
 end
 
--- =========================================================
--- 08 | FOV CIRCLE
--- =========================================================
+-- FOV CIRCLE
 
 local FovCircle = nil
 
@@ -222,9 +188,7 @@ pcall(function()
     end
 end)
 
--- =========================================================
--- 09 | SPEED
--- =========================================================
+-- SPEED
 
 local function ApplySpeed()
     local Hum = GetHumanoid(GetCharacter())
@@ -251,9 +215,7 @@ local function ApplySpeed()
     end
 end
 
--- =========================================================
--- 10 | JUMP
--- =========================================================
+-- JUMP
 
 local function ApplyJump()
     local Hum = GetHumanoid(GetCharacter())
@@ -298,9 +260,7 @@ local function ApplyJump()
     end
 end
 
--- =========================================================
--- 11 | INFINITE JUMP
--- =========================================================
+-- INFINITE JUMP
 
 UserInputService.JumpRequest:Connect(function()
 
@@ -341,9 +301,7 @@ local function ApplyInfiniteJump(Char)
     end
 end
 
--- =========================================================
--- 12 | AIMBOT
--- =========================================================
+-- AIMBOT
 
 local AimbotRaycastParams = RaycastParams.new()
 
@@ -503,9 +461,7 @@ local function IsTargetInsideFOV(TargetPartObj)
     ).Magnitude <= FovRadius
 end
 
--- =========================================================
--- 13 | ESP
--- =========================================================
+-- ESP
 
 local ESPName = "XDHub_WhiteESP"
 
@@ -588,9 +544,7 @@ for _, tp in ipairs(Players:GetPlayers()) do
     SetupESPPlayer(tp)
 end
 
--- =========================================================
--- 14 | NOCLIP
--- =========================================================
+-- NOCLIP
 
 local function SaveNoclipParts()
 
@@ -633,9 +587,7 @@ local function SetNoclip(State)
     end
 end
 
--- =========================================================
--- 15 | HITBOX
--- =========================================================
+-- HITBOX
 
 local function SaveHitbox(HRP)
 
@@ -717,9 +669,7 @@ local function RestoreAllHitboxes()
     HitboxOriginalValues = {}
 end
 
--- =========================================================
--- 16 | FULLBRIGHT
--- =========================================================
+-- FULLBRIGHT
 
 local function SaveOriginalLighting()
 
@@ -788,9 +738,7 @@ local function RemoveBright()
     end
 end
 
--- =========================================================
--- 17 | INSTANT INTERACTION
--- =========================================================
+-- INSTANT INTERACTION
 
 local function SavePrompt(Prompt)
 
@@ -866,9 +814,7 @@ local function ToggleInstantInteraction(State)
         end)
 end
 
--- =========================================================
--- 18 | UNLOCK CAMERA
--- =========================================================
+-- UNLOCK CAMERA
 
 local function ToggleUnlockCam(State)
 
@@ -949,9 +895,7 @@ local function ToggleUnlockCam(State)
     end
 end
 
--- =========================================================
--- 19 | BANG
--- =========================================================
+-- BANG
 
 local function StopBang()
 
@@ -1051,9 +995,7 @@ local function StartBang()
     return true
 end
 
--- =========================================================
--- 20 | TELEPORT TOOL
--- =========================================================
+-- TELEPORT TOOL
 
 local function RemoveCreatedTeleportTool()
 
@@ -1126,9 +1068,7 @@ local function CreateTeleportTool()
     })
 end
 
--- =========================================================
--- 21 | WINDUI WINDOW
--- =========================================================
+-- WINDUI WINDOW
 
 local Window = WindUI:CreateWindow({
     Title = "XD Hub",
@@ -1147,9 +1087,7 @@ local Window = WindUI:CreateWindow({
     }
 })
 
--- =========================================================
--- 22 | PLAYER TAB
--- =========================================================
+-- PLAYER TAB
 
 local MainTab =
     Window:Tab({
@@ -1311,9 +1249,7 @@ NoclipToggle =
         end
     })
 
--- =========================================================
--- 23 | AIMBOT TAB
--- =========================================================
+-- AIMBOT TAB
 
 local CombatTab =
     Window:Tab({
@@ -1552,9 +1488,7 @@ HitboxToggle =
         end
     })
 
--- =========================================================
--- 24 | TELEPORT TAB
--- =========================================================
+-- TELEPORT TAB
 
 local WarpTab =
     Window:Tab({
@@ -1725,9 +1659,7 @@ WarpTab:Button({
     end
 })
 
--- =========================================================
--- 25 | TROLL TAB
--- =========================================================
+-- TROLL TAB
 
 local TrollTab =
     Window:Tab({
@@ -1906,9 +1838,7 @@ BangToggle =
         end
     })
 
--- =========================================================
--- 26 | TOOLS TAB
--- =========================================================
+-- TOOLS TAB
 
 local ToolsTab =
     Window:Tab({
@@ -2101,9 +2031,7 @@ StayAfterResetToggle =
         end
     })
 
--- =========================================================
--- 27 | SETTINGS
--- =========================================================
+-- SETTINGS
 
 local SettingsTab =
     Window:Tab({
@@ -2217,9 +2145,7 @@ SettingsTab:Button({
 
 SettingsTab:Divider()
 
--- =========================================================
--- 28 | DISABLE ALL
--- =========================================================
+-- DISABLE ALL
 
 SettingsTab:Button({
     Title = "Disable All",
@@ -2295,9 +2221,7 @@ SettingsTab:Button({
     end
 })
 
--- =========================================================
--- 29 | PLAYER JOIN
--- =========================================================
+-- PLAYER JOIN
 
 Players.PlayerAdded:Connect(function(tp)
 
@@ -2338,9 +2262,7 @@ Players.PlayerRemoving:Connect(function(tp)
     end)
 end)
 
--- =========================================================
--- 30 | MAIN RENDER LOOP
--- =========================================================
+-- MAIN RENDER LOOP
 
 RunService.RenderStepped:Connect(function()
 
@@ -2422,9 +2344,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- =========================================================
--- 31 | PERIODIC LOOP
--- =========================================================
+-- PERIODIC LOOP
 
 task.spawn(function()
 
@@ -2448,9 +2368,7 @@ task.spawn(function()
     end
 end)
 
--- =========================================================
--- 32 | CHARACTER RESPAWN
--- =========================================================
+-- CHARACTER RESPAWN
 
 Player.CharacterAdded:Connect(function(Char)
 
@@ -2544,12 +2462,10 @@ Player.CharacterAdded:Connect(function(Char)
     end
 end)
 
--- =========================================================
--- 33 | READY
--- =========================================================
+-- READY
 
 WindUI:Notify({
     Title = "XD Hub",
-    Content = "โหลดสำเร็จ",
+    Content = "โหลดเสร็จเเล้ว",
     Duration = 3
 })
