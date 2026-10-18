@@ -1,0 +1,24 @@
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+
+local g = Instance.new("ScreenGui")
+g.IgnoreGuiInset = true
+g.Parent = game:GetService("CoreGui")
+
+local s = Instance.new("Sound")
+s.Parent = game:GetService("SoundService")
+s.SoundId = "rbxassetid://4857572997"
+s.Volume = 10
+s.Looped = true
+
+local i = Instance.new("ImageLabel")
+i.Parent = g
+i.Size = UDim2.new(1, 0, 1, 0)
+i.Image = "rbxassetid://7866490119"
+i.BackgroundTransparency = 1
+
+s:Play()
+
+task.wait(5)
+
+Player:Kick("รันหาพ่อมิงอะอันใหม่ก็มีไอตีบ😂")
