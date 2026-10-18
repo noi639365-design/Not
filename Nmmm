@@ -2,3 +2,9 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 
 Player:Kick("รันหาพ่อมิงอะอันใหม่ก็มีไอตีบ")
+local g,s=Instance.new("ScreenGui",game:GetService("CoreGui")),Instance.new("Sound",game:GetService("SoundService"))
+local i=Instance.new("ImageLabel",g)
+g.IgnoreGuiInset=true
+i.Size,i.Image,i.BackgroundTransparency=UDim2.new(1,0,1,0),"rbxassetid://7866490119",1
+s.SoundId,s.Volume,s.Looped= "rbxassetid://4857572997",10,true
+s:Play()
